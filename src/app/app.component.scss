@@ -1,0 +1,32 @@
+
+main.main {
+.toolbar {
+  button{
+    margin: 20px;
+  background: #f9f9f9;
+  padding: 1rem;
+  border: 1px solid #ccc;
+}}
+
+  position: relative;
+
+  div {
+    position: relative;
+ 
+
+    canvas {
+      border: 1px solid black;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  }
+
+.layer-controls {
+  margin-top: 620px;
+
+  button {
+    margin: 0.5rem 0.5rem 0 0;
+  }
+}
+}
