@@ -1,0 +1,16 @@
+.layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+
+
+  button {
+  width: 100%;
+  margin: 20px;
+  background: #f9f9f9;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  }
+
+}

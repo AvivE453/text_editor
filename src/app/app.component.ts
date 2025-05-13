@@ -1,6 +1,7 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { LayersComponent } from './layers/layers.component';
 
 interface Point {
   x: number;
@@ -10,13 +11,14 @@ interface Point {
 interface Layer {
   type: 'polygon' | 'text';
   data: any;
+  order: Number
 }
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  imports: [FormsModule,CommonModule]
+  imports: [FormsModule,CommonModule, LayersComponent]
 })
 export class AppComponent {
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -27,6 +29,8 @@ baseImage: HTMLImageElement | null = null;
   ctx!: CanvasRenderingContext2D;
   drawing = false;
   layers: Layer[] = [];
+  counter = 0
+
 
   ngOnInit() {
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
@@ -89,13 +93,13 @@ baseImage: HTMLImageElement | null = null;
   }
 
   addPolygonLayer() {
-    this.layers.push({ type: 'polygon', data: { points: [] } });
+    this.layers.push({ type: 'polygon', data: { points: [] }, order: this.counter++});
   }
 
   addTextLayer() {
     const text = prompt('Enter text:');
     if (!text) return;
-    this.layers.push({ type: 'text', data: { text, position: { x: 100, y: 100 } } });
+    this.layers.push({ type: 'text', data: { text, position: { x: 100, y: 100 } }, order: this.counter++ });
    this.redraw();
   }
 
@@ -138,7 +142,7 @@ handleImage(event: any) {
     };
     img.src = e.target?.result as string;
   };
-  reader.readAsDataURL(file);
+ reader.readAsDataURL(file);
 }
 
   clearCanvas() {

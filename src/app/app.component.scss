@@ -30,3 +30,31 @@ main.main {
   }
 }
 }
+.container{
+  position: relative; 
+  width: 800px; 
+  height: 600px;
+  display: flex;
+  align-items: flex-start;
+  margin-top: 1rem;
+.canvas-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem; // space between canvas and layers panel
+  margin-top: 1rem;
+
+  canvas {
+    border: 1px solid black;
+  }
+
+  app-layers {
+    width: 200px;
+    flex-shrink: 0;
+    margin-left: 410%;
+  }
+}
+
+
+}
+
+

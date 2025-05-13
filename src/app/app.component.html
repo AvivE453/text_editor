@@ -8,17 +8,17 @@
       <button (click)="loadLayers()">Load</button>
   </div>
   
-  <div style="position: relative; width: 800px; height: 600px;">
-    <canvas #canvas width="800" height="600"
-            (mousedown)="startDraw($event)"
-            (mousemove)="draw($event)"
-            (mouseup)="endDraw()"></canvas>
+  <div class="container">
+    <div class="canvas-wrapper">
+      <canvas #canvas width="800" height="600"
+              (mousedown)="startDraw($event)"
+              (mousemove)="draw($event)"
+              (mouseup)="endDraw()"></canvas>
+      <app-layers></app-layers>
+    </div>
   </div>
 
-  <div class="layer-controls">
 <input type="file" #imageInput accept="image/*" style="display: none" (change)="handleImage($event)">
-  </div>
-
 </main>
 
 <input type="file" style="display: none" #fileInput (change)="handleFile($event)">
