@@ -6,6 +6,25 @@
       <button (click)="addPolygonLayer()">Add Polygon</button>
       <button (click)="saveLayers()">Save</button>
       <button (click)="loadLayers()">Load</button>
+
+<div *ngIf="editingLayerIndex !== null" class="edit-toolbar">
+  <label>
+    <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
+    Bold
+  </label>
+
+  <label>
+    Size:
+    <input type="number" [(ngModel)]="editOptions.fontSize" min="8" max="72" (input)="updateLiveEdit()">
+  </label>
+
+  <label>
+    Color:
+    <input type="color" [(ngModel)]="editOptions.color" (input)="updateLiveEdit()">
+  </label>
+
+  <button (click)="cancelEdit()">Cancel</button>
+</div>
   </div>
   
   <div class="container">
@@ -14,7 +33,12 @@
               (mousedown)="startDraw($event)"
               (mousemove)="draw($event)"
               (mouseup)="endDraw()"></canvas>
-      <app-layers></app-layers>
+    <app-layers 
+  [layers]="layers" 
+  (onDelete)="handleDelete($event)" 
+  (onEdit)="handleEdit($event)" 
+  (onToggleVisibility)="handleToggleVisibility($event)">
+</app-layers>
     </div>
   </div>
 

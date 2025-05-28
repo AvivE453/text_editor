@@ -1,16 +1,19 @@
 .layers {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
+  max-height: 600px; /* Match canvas height */
+  overflow-y: auto;
+  border-left: 1px solid #ccc;
+  padding: 10px;
+  width: 200px;
+}
 
-
-  button {
-  width: 100%;
-  margin: 20px;
-  background: #f9f9f9;
-  padding: 1rem;
+.layer-item {
+  padding: 8px;
+  margin-bottom: 4px;
   border: 1px solid #ccc;
-  }
+  cursor: pointer;
+}
 
+.layer-item.selected {
+  background-color: #e0f7fa;
+  border-color: #00796b;
 }
