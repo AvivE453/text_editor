@@ -45,7 +45,7 @@ export class AppComponent {
   };
 
   polygonEditOptions = {
-    size: 10,
+    size: 50,
     color: '#000000',
     thickness: 1
   };
@@ -73,41 +73,66 @@ export class AppComponent {
     this.showPolygonDialog = false;
   }
 
-  startDraw(event: MouseEvent) {
-    const pos = this.getMousePos(event);
+startDraw(event: MouseEvent) {
+  const pos = this.getMousePos(event);
 
-    for (let i = this.layers.length - 1; i >= 0; i--) {
-      const layer = this.layers[i];
+  for (let i = this.layers.length - 1; i >= 0; i--) {
+    const layer = this.layers[i];
 
-      if (layer.type === 'text' && layer.visible !== false) {
-        const { position, width, height } = layer.data;
-        if (
-          pos.x >= position.x &&
-          pos.x <= position.x + width &&
-          pos.y >= position.y - height &&
-          pos.y <= position.y
-        ) {
-          this.selectedTextLayer = layer;
-          this.isDraggingText = true;
-          this.offsetX = pos.x - position.x;
-          this.offsetY = pos.y - position.y;
-          return;
-        }
+    if (layer.type === 'text' && layer.visible !== false) {
+      const { position, width, height } = layer.data;
+      if (
+        pos.x >= position.x &&
+        pos.x <= position.x + width &&
+        pos.y >= position.y - height &&
+        pos.y <= position.y
+      ) {
+        this.selectedTextLayer = layer;
+        this.isDraggingText = true;
+        this.offsetX = pos.x - position.x;
+        this.offsetY = pos.y - position.y;
+        return;
       }
+    }
 
-      if (layer.type === 'polygon' && layer.visible !== false && layer.data.center) {
-        const center = layer.data.center;
-        const distance = Math.hypot(pos.x - center.x, pos.y - center.y);
-        if (distance < 10) { // click threshold
+    if (layer.type === 'polygon' && layer.visible !== false) {
+      const data = layer.data;
+      if (data.points) {
+        // Check if point is inside polygon
+        if (this.isPointInPolygon(pos, data.points)) {
           this.selectedPolygonLayer = layer;
           this.isDraggingPolygon = true;
-          this.offsetX = pos.x - center.x;
-          this.offsetY = pos.y - center.y;
+          this.offsetX = pos.x - data.center.x;
+          this.offsetY = pos.y - data.center.y;
+          return;
+        }
+      } else if (data.center && data.radius) {
+        // Check if point is inside circle
+        const distance = Math.hypot(pos.x - data.center.x, pos.y - data.center.y);
+        if (distance <= data.radius) {
+          this.selectedPolygonLayer = layer;
+          this.isDraggingPolygon = true;
+          this.offsetX = pos.x - data.center.x;
+          this.offsetY = pos.y - data.center.y;
           return;
         }
       }
     }
   }
+}
+
+isPointInPolygon(point: Point, polygon: Point[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect = ((yi > point.y) !== (yj > point.y)) &&
+      (point.x < (xj - xi) * (point.y - yi) / (yj - yi + 0.00001) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 
   draw(event: MouseEvent) {
     if (this.isDraggingText && this.selectedTextLayer) {
@@ -291,7 +316,7 @@ export class AppComponent {
       this.editingLayerIndex = null;
       const { color = '#000000', thickness = 1 } = layer.data;
       this.polygonEditOptions = {
-        size: 100,
+        size: 50,
         color,
         thickness
       };
@@ -323,32 +348,31 @@ export class AppComponent {
   layer.data.color = this.polygonEditOptions.color;
   layer.data.thickness = this.polygonEditOptions.thickness;
 
-  const size = this.polygonEditOptions.size;
+  const size = 2 * this.polygonEditOptions.size;
   const center = layer.data.center;
 
   if (layer.data.points) {
-    const halfSize = size / 2;
 
     if (layer.data.points.length === 5) {
       // Square
       layer.data.points = [
-        { x: center.x - halfSize, y: center.y - halfSize },
-        { x: center.x + halfSize, y: center.y - halfSize },
-        { x: center.x + halfSize, y: center.y + halfSize },
-        { x: center.x - halfSize, y: center.y + halfSize },
-        { x: center.x - halfSize, y: center.y - halfSize }
+        { x: center.x - size, y: center.y - size },
+        { x: center.x + size, y: center.y - size },
+        { x: center.x + size, y: center.y + size },
+        { x: center.x - size, y: center.y + size },
+        { x: center.x - size, y: center.y - size }
       ];
     } else if (layer.data.points.length === 4) {
       // Triangle
       layer.data.points = [
-        { x: center.x, y: center.y - halfSize },
-        { x: center.x + halfSize, y: center.y + halfSize },
-        { x: center.x - halfSize, y: center.y + halfSize },
-        { x: center.x, y: center.y - halfSize }
+        { x: center.x, y: center.y - size },
+        { x: center.x + size, y: center.y + size },
+        { x: center.x - size, y: center.y + size },
+        { x: center.x, y: center.y - size }
       ];
     }
   } else if (layer.data.radius !== undefined) {
-    layer.data.radius = size / 2;
+    layer.data.radius = size
   }
 
   this.redraw();
