@@ -11,8 +11,8 @@ interface Point {
 interface Layer {
   type: 'polygon' | 'text';
   data: any;
-  order: Number;
-  visible: Boolean;
+  order: number;
+  visible: boolean;
 }
 
 @Component({
@@ -31,18 +31,28 @@ export class AppComponent {
   ctx!: CanvasRenderingContext2D;
   drawing = false;
   @Input() layers: Layer[] = [];
-  
+  showPolygonDialog = false;
   counter = 0;
-
 
   selectedTextLayer: Layer | null = null;
   editingLayerIndex: number | null = null;
+  polygonEditingLayerIndex: number | null = null;
+
   editOptions = {
-  bold: false,
-  fontSize: 16,
-  color: '#000000'
+    bold: false,
+    fontSize: 16,
+    color: '#000000'
   };
+
+  polygonEditOptions = {
+    size: 10,
+    color: '#000000',
+    thickness: 1
+  };
+
   isDraggingText = false;
+  isDraggingPolygon = false;
+  selectedPolygonLayer: Layer | null = null;
   offsetX = 0;
   offsetY = 0;
 
@@ -55,47 +65,50 @@ export class AppComponent {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
- 
- startDraw(event: MouseEvent) {
-  const pos = this.getMousePos(event);
+  openAddPolygonDialog() {
+    this.showPolygonDialog = true;
+  }
 
-  // Check for text layer dragging (from topmost to bottom)
-  for (let i = this.layers.length - 1; i >= 0; i--) {
-    const layer = this.layers[i];
+  closeAddPolygonDialog() {
+    this.showPolygonDialog = false;
+  }
 
-    if (layer.type === 'text' && layer.visible !== false) {
-      const { position, width, height } = layer.data;
+  startDraw(event: MouseEvent) {
+    const pos = this.getMousePos(event);
 
-      const lx = position.x;
-      const ly = position.y;
+    for (let i = this.layers.length - 1; i >= 0; i--) {
+      const layer = this.layers[i];
 
-      const isInside = (
-        pos.x >= lx &&
-        pos.x <= lx + width &&
-        pos.y >= ly - height &&
-        pos.y <= ly
-      );
+      if (layer.type === 'text' && layer.visible !== false) {
+        const { position, width, height } = layer.data;
+        if (
+          pos.x >= position.x &&
+          pos.x <= position.x + width &&
+          pos.y >= position.y - height &&
+          pos.y <= position.y
+        ) {
+          this.selectedTextLayer = layer;
+          this.isDraggingText = true;
+          this.offsetX = pos.x - position.x;
+          this.offsetY = pos.y - position.y;
+          return;
+        }
+      }
 
-      if (isInside) {
-        this.selectedTextLayer = layer;
-        this.isDraggingText = true;
-        this.offsetX = pos.x - lx;
-        this.offsetY = pos.y - ly;
-        return;
+      if (layer.type === 'polygon' && layer.visible !== false && layer.data.center) {
+        const center = layer.data.center;
+        const distance = Math.hypot(pos.x - center.x, pos.y - center.y);
+        if (distance < 10) { // click threshold
+          this.selectedPolygonLayer = layer;
+          this.isDraggingPolygon = true;
+          this.offsetX = pos.x - center.x;
+          this.offsetY = pos.y - center.y;
+          return;
+        }
       }
     }
   }
 
-  // If not dragging text, maybe draw polygon
-  const currentLayer = this.layers[this.layers.length - 1];
-  if (currentLayer?.type !== 'polygon') return;
-
-  this.drawing = true;
-  currentLayer.data.points.push(pos);
-}
-
-
-  // 🟠 MODIFIED: Track text movement
   draw(event: MouseEvent) {
     if (this.isDraggingText && this.selectedTextLayer) {
       const pos = this.getMousePos(event);
@@ -105,88 +118,242 @@ export class AppComponent {
       return;
     }
 
-    if (!this.drawing) return;
+    if (this.isDraggingPolygon && this.selectedPolygonLayer) {
+      const pos = this.getMousePos(event);
+      const layer = this.selectedPolygonLayer;
+      const dx = pos.x - this.offsetX - layer.data.center.x;
+      const dy = pos.y - this.offsetY - layer.data.center.y;
+
+      // Move center
+      layer.data.center.x += dx;
+      layer.data.center.y += dy;
+
+      // Move points
+      if (layer.data.points) {
+        layer.data.points = layer.data.points.map((p: Point) => ({
+          x: p.x + dx,
+          y: p.y + dy
+        }));
+      }
+
+      this.redraw();
+      return;
+    }
   }
 
-  // 🟠 MODIFIED: End drag or draw
   endDraw() {
     if (this.isDraggingText) {
       this.isDraggingText = false;
       this.selectedTextLayer = null;
     }
-    this.drawing = false;
+    if (this.isDraggingPolygon) {
+      this.isDraggingPolygon = false;
+      this.selectedPolygonLayer = null;
+    }
   }
 
   redraw() {
-  const canvas = this.canvasRef.nativeElement;
-  this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const canvas = this.canvasRef.nativeElement;
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (this.baseImage) {
-    this.ctx.drawImage(this.baseImage, 0, 0, canvas.width, canvas.height);
+    if (this.baseImage) {
+      this.ctx.drawImage(this.baseImage, 0, 0, canvas.width, canvas.height);
+    }
+
+    this.layers.forEach(layer => {
+      if (!layer.visible) return;
+      if (layer.type === 'polygon') {
+        this.drawPolygon(layer.data);
+      } else if (layer.type === 'text') {
+        this.drawText(layer.data.text, layer.data.position);
+      }
+    });
   }
 
-  this.layers.forEach(layer => {
-    if (layer.visible === false) return; // ⬅️ Important for hiding layers
+  drawPolygon(data: any) {
+    this.ctx.strokeStyle = data.color || '#000000';
+    this.ctx.lineWidth = data.thickness || 1;
 
-    if (layer.type === 'polygon') {
-      this.drawPolygon(layer.data.points);
-    } else if (layer.type === 'text') {
-      this.drawText(layer.data.text, layer.data.position);
+    if (data.center && data.radius) {
+      this.ctx.beginPath();
+      this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI);
+      this.ctx.stroke();
+    } else if (data.points && data.points.length > 0) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(data.points[0].x, data.points[0].y);
+      data.points.slice(1).forEach((p: Point) => this.ctx.lineTo(p.x, p.y));
+      this.ctx.closePath();
+      this.ctx.stroke();
     }
-  });
-}
-
-
-  drawPolygon(points: Point[]) {
-    if (points.length === 0) return;
-    this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
-    points.slice(1).forEach(p => this.ctx.lineTo(p.x, p.y));
-    this.ctx.stroke();
   }
 
   drawText(text: string, position: { x: number, y: number }) {
-  const layer = this.layers.find(
-    l => l.data.text === text && 
-         l.data.position.x === position.x &&
-         l.data.position.y === position.y
-  );
-  if (!layer) return;
-
-  this.ctx.font = layer.data.font || '16px Arial';
-  this.ctx.fillStyle = layer.data.color || '#000000';
-  this.ctx.fillText(text, position.x, position.y);
-}
-
-  addPolygonLayer() {
-    this.layers.push({ type: 'polygon', data: { points: [] }, order: this.counter++, visible: true });
+    const layer = this.layers.find(
+      l => l.data.text === text &&
+           l.data.position.x === position.x &&
+           l.data.position.y === position.y
+    );
+    if (!layer) return;
+    this.ctx.font = layer.data.font || '16px Arial';
+    this.ctx.fillStyle = layer.data.color || '#000000';
+    this.ctx.fillText(text, position.x, position.y);
   }
 
   addTextLayer() {
-  const text = prompt('Enter text:');
-  if (!text) return;
+    const text = prompt('Enter text:');
+    if (!text) return;
+    const defaultFont = '16px Arial';
+    this.ctx.font = defaultFont;
+    const width = this.ctx.measureText(text).width;
+    const height = 16;
+    this.layers.push({
+      type: 'text',
+      data: { text, position: { x: 100, y: 100 }, font: defaultFont, color: '#000000', width, height },
+      order: this.counter++,
+      visible: true
+    });
+    this.redraw();
+  }
 
-  const defaultFont = '16px Arial';
-  this.ctx.font = defaultFont;
-  const width = this.ctx.measureText(text).width;
-  const height = 16; // match font size
+  addSquareLayer() {
+    const size = 100;
+    const startX = 100;
+    const startY = 100;
+    const center = { x: startX + size / 2, y: startY + size / 2 };
+    const points: Point[] = [
+      { x: center.x - size / 2, y: center.y - size / 2 },
+      { x: center.x + size / 2, y: center.y - size / 2 },
+      { x: center.x + size / 2, y: center.y + size / 2 },
+      { x: center.x - size / 2, y: center.y + size / 2 },
+      { x: center.x - size / 2, y: center.y - size / 2 }
+    ];
+    this.layers.push({
+      type: 'polygon',
+      data: { points, center, color: '#000000', thickness: 1 },
+      order: this.counter++,
+      visible: true
+    });
+    this.showPolygonDialog = false;
+    this.redraw();
+  }
 
-  this.layers.push({
-    type: 'text',
-    data: {
-      text,
-      position: { x: 100, y: 100 },
-      font: defaultFont,
-      color: '#000000',
-      width,
-      height
-    },
-    order: this.counter++,
-    visible: true
-  });
+  addTriangleLayer() {
+    const size = 100;
+    const startX = 100;
+    const startY = 100;
+    const points: Point[] = [
+      { x: startX, y: startY },
+      { x: startX + size, y: startY },
+      { x: startX + size / 2, y: startY - size },
+      { x: startX, y: startY }
+    ];
+    const centerX = (startX + startX + size + startX + size / 2) / 3;
+    const centerY = (startY + startY + startY - size) / 3;
+    const center = { x: centerX, y: centerY };
+    this.layers.push({
+      type: 'polygon',
+      data: { points, center, color: '#000000', thickness: 1 },
+      order: this.counter++,
+      visible: true
+    });
+    this.showPolygonDialog = false;
+    this.redraw();
+  }
+
+  addCircleLayer() {
+    const centerX = 200;
+    const centerY = 200;
+    const radius = 50;
+    this.layers.push({
+      type: 'polygon',
+      data: { center: { x: centerX, y: centerY }, radius, color: '#000000', thickness: 1 },
+      order: this.counter++,
+      visible: true
+    });
+    this.showPolygonDialog = false;
+    this.redraw();
+  }
+
+  handleEdit(index: number) {
+    const layer = this.layers[index];
+    if (layer.type === 'text') {
+      this.editingLayerIndex = index;
+      this.polygonEditingLayerIndex = null;
+      const { font = '16px Arial', color = '#000000' } = layer.data;
+      const sizeMatch = font.match(/(\d+)px/);
+      this.editOptions = {
+        bold: font.includes('bold'),
+        fontSize: sizeMatch ? parseInt(sizeMatch[1]) : 16,
+        color
+      };
+    } else if (layer.type === 'polygon') {
+      this.polygonEditingLayerIndex = index;
+      this.editingLayerIndex = null;
+      const { color = '#000000', thickness = 1 } = layer.data;
+      this.polygonEditOptions = {
+        size: 100,
+        color,
+        thickness
+      };
+    }
+  }
+
+  updateLiveEdit() {
+    if (this.editingLayerIndex === null) return;
+    const layer = this.layers[this.editingLayerIndex];
+    if (layer.type !== 'text') return;
+    const { bold, fontSize, color } = this.editOptions;
+    const weight = bold ? 'bold' : 'normal';
+    const font = `${weight} ${fontSize}px Arial`;
+    layer.data.font = font;
+    layer.data.color = color;
+    this.ctx.font = font;
+    const metrics = this.ctx.measureText(layer.data.text);
+    layer.data.width = metrics.width;
+    layer.data.height = fontSize;
+    this.redraw();
+  }
+
+  updatePolygonLiveEdit() {
+  if (this.polygonEditingLayerIndex === null) return;
+  const layer = this.layers[this.polygonEditingLayerIndex];
+  if (layer.type !== 'polygon') return;
+
+  // Apply color and thickness
+  layer.data.color = this.polygonEditOptions.color;
+  layer.data.thickness = this.polygonEditOptions.thickness;
+
+  const size = this.polygonEditOptions.size;
+  const center = layer.data.center;
+
+  if (layer.data.points) {
+    const halfSize = size / 2;
+
+    if (layer.data.points.length === 5) {
+      // Square
+      layer.data.points = [
+        { x: center.x - halfSize, y: center.y - halfSize },
+        { x: center.x + halfSize, y: center.y - halfSize },
+        { x: center.x + halfSize, y: center.y + halfSize },
+        { x: center.x - halfSize, y: center.y + halfSize },
+        { x: center.x - halfSize, y: center.y - halfSize }
+      ];
+    } else if (layer.data.points.length === 4) {
+      // Triangle
+      layer.data.points = [
+        { x: center.x, y: center.y - halfSize },
+        { x: center.x + halfSize, y: center.y + halfSize },
+        { x: center.x - halfSize, y: center.y + halfSize },
+        { x: center.x, y: center.y - halfSize }
+      ];
+    }
+  } else if (layer.data.radius !== undefined) {
+    layer.data.radius = size / 2;
+  }
 
   this.redraw();
-  }
+}
+
 
   saveLayers() {
     const dataStr = JSON.stringify(this.layers);
@@ -207,7 +374,7 @@ export class AppComponent {
     const reader = new FileReader();
     reader.onload = e => {
       if (e.target != null) {
-        this.layers = JSON.parse(e.target.result as string); // 🟡 UNCOMMENTED
+        this.layers = JSON.parse(e.target.result as string);
         this.redraw();
       }
     };
@@ -233,63 +400,25 @@ export class AppComponent {
   }
 
   clearCanvas() {
-    this.layers = []
-    this.redraw()
+    this.layers = [];
+    this.redraw();
   }
 
   handleDelete(index: number) {
     this.layers.splice(index, 1);
     this.redraw();
- }
-
-handleEdit(index: number) {
-  const layer = this.layers[index];
-  if (layer.type !== 'text') return;
-
-  this.editingLayerIndex = index;
-
-  // Load current settings into editOptions
-  const { font = '16px Arial', color = '#000000' } = layer.data;
-  const sizeMatch = font.match(/(\d+)px/);
-  this.editOptions = {
-    bold: font.includes('bold'),
-    fontSize: sizeMatch ? parseInt(sizeMatch[1]) : 16,
-    color
-  };
-}
+  }
 
   handleToggleVisibility(index: number) {
     this.layers[index].visible = !this.layers[index].visible;
     this.redraw();
   }
 
-updateLiveEdit() {
-  if (this.editingLayerIndex === null) return;
+  cancelEdit() {
+    this.editingLayerIndex = null;
+  }
 
-  const layer = this.layers[this.editingLayerIndex];
-  if (layer.type !== 'text') return;
-
-  const { bold, fontSize, color } = this.editOptions;
-  const weight = bold ? 'bold' : 'normal';
-  const font = `${weight} ${fontSize}px Arial`;
-  
-  layer.data.font = font;
-  layer.data.color = color;
-
-  // Measure updated text dimensions
-  this.ctx.font = font;
-  const metrics = this.ctx.measureText(layer.data.text);
-  layer.data.width = metrics.width;
-  layer.data.height = fontSize; // Approximate height = font size
-
-  this.redraw();
+  cancelPolygonEdit() {
+    this.polygonEditingLayerIndex = null;
+  }
 }
-
-
-
-cancelEdit() {
-  this.editingLayerIndex = null;
-}
-}
-
-

@@ -1,48 +1,76 @@
 <main class="main">
-    <div class="toolbar" >
-      <button (click)="uploadImage()">Upload Image</button>
-      <button (click)="clearCanvas()">Clear Canvas</button>
-      <button (click)="addTextLayer()">Add Text</button>
-      <button (click)="addPolygonLayer()">Add Polygon</button>
-      <button (click)="saveLayers()">Save</button>
-      <button (click)="loadLayers()">Load</button>
+  <div class="toolbar">
+    <button (click)="uploadImage()">Upload Image</button>
+    <button (click)="clearCanvas()">Clear Canvas</button>
+    <button (click)="addTextLayer()">Add Text</button>
+    <button (click)="openAddPolygonDialog()">Add Polygon</button>
+    <button (click)="saveLayers()">Save</button>
+    <button (click)="loadLayers()">Load</button>
 
-<div *ngIf="editingLayerIndex !== null" class="edit-toolbar">
-  <label>
-    <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
-    Bold
-  </label>
+    <div *ngIf="editingLayerIndex !== null" class="edit-toolbar">
+      <label>
+        <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
+        Bold
+      </label>
+      <label>
+        Size:
+        <input type="number" [(ngModel)]="editOptions.fontSize" min="8" max="72" (input)="updateLiveEdit()">
+      </label>
+      <label>
+        Color:
+        <input type="color" [(ngModel)]="editOptions.color" (input)="updateLiveEdit()">
+      </label>
+      <button (click)="cancelEdit()">Cancel</button>
+    </div>
 
-  <label>
-    Size:
-    <input type="number" [(ngModel)]="editOptions.fontSize" min="8" max="72" (input)="updateLiveEdit()">
-  </label>
+    <div *ngIf="polygonEditingLayerIndex !== null" class="edit-toolbar">
+      <label>
+        Size:
+        <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
+      </label>
+      <label>
+        Color:
+        <input type="color" [(ngModel)]="polygonEditOptions.color" (input)="updatePolygonLiveEdit()">
+      </label>
+      <label>
+        Thickness:
+        <input type="number" min="1" max="10" [(ngModel)]="polygonEditOptions.thickness" (input)="updatePolygonLiveEdit()">
+      </label>
+      <button (click)="cancelPolygonEdit()">Cancel</button>
+    </div>
 
-  <label>
-    Color:
-    <input type="color" [(ngModel)]="editOptions.color" (input)="updateLiveEdit()">
-  </label>
-
-  <button (click)="cancelEdit()">Cancel</button>
-</div>
   </div>
+
   
+
+
+
   <div class="container">
     <div class="canvas-wrapper">
       <canvas #canvas width="800" height="600"
               (mousedown)="startDraw($event)"
               (mousemove)="draw($event)"
               (mouseup)="endDraw()"></canvas>
-    <app-layers 
-  [layers]="layers" 
-  (onDelete)="handleDelete($event)" 
-  (onEdit)="handleEdit($event)" 
-  (onToggleVisibility)="handleToggleVisibility($event)">
-</app-layers>
+      <app-layers 
+        [layers]="layers" 
+        (onDelete)="handleDelete($event)" 
+        (onEdit)="handleEdit($event)" 
+        (onToggleVisibility)="handleToggleVisibility($event)">
+      </app-layers>
     </div>
   </div>
 
-<input type="file" #imageInput accept="image/*" style="display: none" (change)="handleImage($event)">
+  <div class="dialog-overlay" *ngIf="showPolygonDialog">
+    <div class="dialog">
+      <h3>Select Polygon Shape</h3>
+      <button (click)="addSquareLayer()">Square</button>
+      <button (click)="addTriangleLayer()">Triangle</button>
+      <button (click)="addCircleLayer()">Circle</button>
+      <button (click)="closeAddPolygonDialog()">Cancel</button>
+    </div>
+  </div>
+
+  <input type="file" #imageInput accept="image/*" style="display: none" (change)="handleImage($event)">
 </main>
 
 <input type="file" style="display: none" #fileInput (change)="handleFile($event)">
