@@ -36,6 +36,7 @@ export class AppComponent {
 
   selectedTextLayer: Layer | null = null;
   editingLayerIndex: number | null = null;
+  selectedPolygonLayer: Layer | null = null;
   polygonEditingLayerIndex: number | null = null;
 
   editOptions = {
@@ -47,12 +48,12 @@ export class AppComponent {
   polygonEditOptions = {
     size: 50,
     color: '#000000',
+    fillColor: '#fff',
     thickness: 1
   };
 
   isDraggingText = false;
   isDraggingPolygon = false;
-  selectedPolygonLayer: Layer | null = null;
   offsetX = 0;
   offsetY = 0;
 
@@ -73,7 +74,7 @@ export class AppComponent {
     this.showPolygonDialog = false;
   }
 
-startDraw(event: MouseEvent) {
+startMove(event: MouseEvent) {
   const pos = this.getMousePos(event);
 
   for (let i = this.layers.length - 1; i >= 0; i--) {
@@ -98,7 +99,7 @@ startDraw(event: MouseEvent) {
     if (layer.type === 'polygon' && layer.visible !== false) {
       const data = layer.data;
       if (data.points) {
-        // Check if point is inside polygon
+        // triangle and square polygon
         if (this.isPointInPolygon(pos, data.points)) {
           this.selectedPolygonLayer = layer;
           this.isDraggingPolygon = true;
@@ -107,7 +108,7 @@ startDraw(event: MouseEvent) {
           return;
         }
       } else if (data.center && data.radius) {
-        // Check if point is inside circle
+        //  circle
         const distance = Math.hypot(pos.x - data.center.x, pos.y - data.center.y);
         if (distance <= data.radius) {
           this.selectedPolygonLayer = layer;
@@ -134,13 +135,12 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
 }
 
 
-  draw(event: MouseEvent) {
+  move(event: MouseEvent) {
     if (this.isDraggingText && this.selectedTextLayer) {
       const pos = this.getMousePos(event);
       this.selectedTextLayer.data.position.x = pos.x - this.offsetX;
       this.selectedTextLayer.data.position.y = pos.y - this.offsetY;
       this.redraw();
-      return;
     }
 
     if (this.isDraggingPolygon && this.selectedPolygonLayer) {
@@ -162,11 +162,10 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
       }
 
       this.redraw();
-      return;
     }
   }
 
-  endDraw() {
+  endMove() {
     if (this.isDraggingText) {
       this.isDraggingText = false;
       this.selectedTextLayer = null;
@@ -195,22 +194,26 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
     });
   }
 
-  drawPolygon(data: any) {
-    this.ctx.strokeStyle = data.color || '#000000';
-    this.ctx.lineWidth = data.thickness || 1;
+ 
+drawPolygon(data: any) { // we rendereing the whole canvas so each time we create a new polygon we have different setting for it 
+  this.ctx.strokeStyle = data.color || '#000000';
+  this.ctx.lineWidth = data.thickness || 1;
+  this.ctx.fillStyle = data.fillColor || 'transparent';  // Default: no fill
 
-    if (data.center && data.radius) {
-      this.ctx.beginPath();
-      this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI);
-      this.ctx.stroke();
-    } else if (data.points && data.points.length > 0) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(data.points[0].x, data.points[0].y);
-      data.points.slice(1).forEach((p: Point) => this.ctx.lineTo(p.x, p.y));
-      this.ctx.closePath();
-      this.ctx.stroke();
-    }
+  if (data.center && data.radius) {
+    this.ctx.beginPath();
+    this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI);
+    this.ctx.fill();   // fill first
+    this.ctx.stroke(); // then stroke
+  } else if (data.points && data.points.length > 0) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(data.points[0].x, data.points[0].y);
+    data.points.slice(1).forEach((p: Point) => this.ctx.lineTo(p.x, p.y));
+    this.ctx.closePath();
+    this.ctx.fill();   // fill inside
+    this.ctx.stroke(); // draw border
   }
+}
 
   drawText(text: string, position: { x: number, y: number }) {
     const layer = this.layers.find(
@@ -233,7 +236,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
     const height = 16;
     this.layers.push({
       type: 'text',
-      data: { text, position: { x: 100, y: 100 }, font: defaultFont, color: '#000000', width, height },
+      data: { text, position: { x: 200, y: 200 }, font: defaultFont, color: '#000000', width, height },
       order: this.counter++,
       visible: true
     });
@@ -242,8 +245,8 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
 
   addSquareLayer() {
     const size = 100;
-    const startX = 100;
-    const startY = 100;
+    const startX = 200;
+    const startY = 200;
     const center = { x: startX + size / 2, y: startY + size / 2 };
     const points: Point[] = [
       { x: center.x - size / 2, y: center.y - size / 2 },
@@ -254,7 +257,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
     ];
     this.layers.push({
       type: 'polygon',
-      data: { points, center, color: '#000000', thickness: 1 },
+      data: { points, center, color: '#000000', fillColor: '#fff', thickness: 1 },
       order: this.counter++,
       visible: true
     });
@@ -264,8 +267,8 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
 
   addTriangleLayer() {
     const size = 100;
-    const startX = 100;
-    const startY = 100;
+    const startX = 200;
+    const startY = 200;
     const points: Point[] = [
       { x: startX, y: startY },
       { x: startX + size, y: startY },
@@ -277,7 +280,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
     const center = { x: centerX, y: centerY };
     this.layers.push({
       type: 'polygon',
-      data: { points, center, color: '#000000', thickness: 1 },
+      data: { points, center, color: '#000000', fillColor: '#fff', thickness: 1 },
       order: this.counter++,
       visible: true
     });
@@ -286,12 +289,12 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
   }
 
   addCircleLayer() {
-    const centerX = 200;
-    const centerY = 200;
+    const centerX = 300;
+    const centerY = 300;
     const radius = 50;
     this.layers.push({
       type: 'polygon',
-      data: { center: { x: centerX, y: centerY }, radius, color: '#000000', thickness: 1 },
+      data: { center: { x: centerX, y: centerY }, radius, color: '#000000', fillColor: '#fff', thickness: 1 },
       order: this.counter++,
       visible: true
     });
@@ -318,6 +321,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
       this.polygonEditOptions = {
         size: 50,
         color,
+        fillColor: '#fff',
         thickness
       };
     }
@@ -346,6 +350,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
 
   // Apply color and thickness
   layer.data.color = this.polygonEditOptions.color;
+  layer.data.fillColor = this.polygonEditOptions.fillColor;
   layer.data.thickness = this.polygonEditOptions.thickness;
 
   const size = 2 * this.polygonEditOptions.size;

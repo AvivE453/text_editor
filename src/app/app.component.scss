@@ -1,77 +1,95 @@
-
 main.main {
-.toolbar {
-  button{
-    margin: 20px;
-  background: #f9f9f9;
-  padding: 1rem;
-  border: 1px solid #ccc;
-}
-.edit-toolbar {
   display: flex;
-  gap: 12px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  margin-top: 10px;
-  background: #f9f9f9;
+  flex-direction: column;
   align-items: center;
-}
-}
+  padding: 1rem;
 
-  position: relative;
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1rem;
 
-  div {
-    position: relative;
- 
+    button {
+      padding: 0.6rem 1.2rem;
+      background-color: #007bff;
+      border: 1px solid #ccc;
+      color: #fff; 
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background-color 0.3s;
 
-    canvas {
-      border: 1px solid black;
-      position: absolute;
-      top: 0;
-      left: 0;
+      &:hover {
+        background-color: #e0e0e0;
+      }
+    }
+
+    .edit-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fafafa;
+      margin-top: 1rem;
+      align-items: center;
+      justify-content: center;
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+      }
+
+      input[type="number"] {
+        width: 60px;
+      }
     }
   }
 
-.layer-controls {
-  margin-top: 620px;
+  .container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 
-  button {
-    margin: 0.5rem 0.5rem 0 0;
-  }
-}
-}
-.container{
-  position: relative; 
-  width: 800px; 
-  height: 600px;
-  display: flex;
-  align-items: flex-start;
-  margin-top: 1rem;
-.canvas-wrapper {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem; // space between canvas and layers panel
-  margin-top: 1rem;
+    .canvas-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 2rem;
+      padding: 1rem;
 
-  canvas {
-    border: 1px solid black;
+      canvas {
+        border: 2px solid #000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      app-layers {
+        width: 200px;
+        flex-shrink: 0;
+      }
+    }
   }
 
-  app-layers {
-    width: 200px;
-    flex-shrink: 0;
-    margin-left: 410%;
+  .layer-controls {
+    margin-top: 1rem;
+
+    button {
+      margin: 0.5rem;
+    }
   }
 }
 
-}
 .dialog-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.484);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -83,5 +101,14 @@ main.main {
   padding: 20px;
   border-radius: 8px;
   text-align: center;
-}
 
+    button {
+    padding: 0.6rem 0.6rem;
+    background-color: #007bff;
+    border: 1px solid #ccc;
+    color: #fff; 
+    &:hover {
+      background-color: #e0e0e0;
+    }
+  }
+}

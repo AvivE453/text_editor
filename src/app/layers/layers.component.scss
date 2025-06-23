@@ -1,19 +1,41 @@
 .layers {
-  max-height: 600px; /* Match canvas height */
+  max-height: 770px; /* Match canvas height */
   overflow-y: auto;
   border-left: 1px solid #ccc;
-  padding: 10px;
-  width: 200px;
+  padding: 1rem;
+  width: 220px;
+  background-color: #fafafa;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.05);
+  border-radius: 0 8px 8px 0;
+  font-family: sans-serif;
 }
 
 .layer-item {
-  padding: 8px;
-  margin-bottom: 4px;
-  border: 1px solid #ccc;
+  background-color: #fff;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   cursor: pointer;
-}
+  transition: background-color 0.25s, border-color 0.25s;
 
-.layer-item.selected {
-  background-color: #e0f7fa;
-  border-color: #00796b;
+    button {
+      padding: 0.6rem 0.6rem;
+      background-color: #007bff;
+      border: 1px solid #ccc;
+      color: #fff; 
+      &:hover {
+        background-color: #e0e0e0;
+      }
+    }
+
+  &:hover {
+    background-color: #f1f1f1;
+  }
+
+  &.selected {
+    background-color: #e0f7fa;
+    border-color: #15f7dd;
+    font-weight: 600;
+  }
 }

@@ -33,6 +33,10 @@
         <input type="color" [(ngModel)]="polygonEditOptions.color" (input)="updatePolygonLiveEdit()">
       </label>
       <label>
+        Fill:
+        <input type="color" [(ngModel)]="polygonEditOptions.fillColor" (input)="updatePolygonLiveEdit()">
+      </label>
+      <label>
         Thickness:
         <input type="number" min="1" max="10" [(ngModel)]="polygonEditOptions.thickness" (input)="updatePolygonLiveEdit()">
       </label>
@@ -47,10 +51,10 @@
 
   <div class="container">
     <div class="canvas-wrapper">
-      <canvas #canvas width="800" height="600"
-              (mousedown)="startDraw($event)"
-              (mousemove)="draw($event)"
-              (mouseup)="endDraw()"></canvas>
+      <canvas #canvas width="900" height="800"
+              (mousedown)="startMove($event)"
+              (mousemove)="move($event)"
+              (mouseup)="endMove()"></canvas>
       <app-layers 
         [layers]="layers" 
         (onDelete)="handleDelete($event)" 
