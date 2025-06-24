@@ -22,7 +22,7 @@ interface Layer {
   standalone: true,
   imports: [FormsModule, CommonModule, LayersComponent],
 })
-export class AppComponent {
+export class AppComponent { //references to elements in the HTML
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false }) fileInputRef!: ElementRef<HTMLInputElement>;
   @ViewChild('imageInput', { static: false }) imageInputRef!: ElementRef<HTMLInputElement>;
@@ -31,7 +31,7 @@ export class AppComponent {
   ctx!: CanvasRenderingContext2D;
   drawing = false;
   @Input() layers: Layer[] = [];
-  showPolygonDialog = false;
+  isAddShapeDialogOpen = false;
   counter = 0;
 
   selectedTextLayer: Layer | null = null;
@@ -57,30 +57,30 @@ export class AppComponent {
   offsetX = 0;
   offsetY = 0;
 
-  ngOnInit() {
+  ngOnInit() { //conecting the canvas and they layers 
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
   }
 
-  getMousePos(event: MouseEvent): Point {
+  getMousePos(event: MouseEvent): Point { //mouse position in the canvas 
     const rect = this.canvasRef.nativeElement.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
   openAddPolygonDialog() {
-    this.showPolygonDialog = true;
+    this.isAddShapeDialogOpen = true;
   }
 
   closeAddPolygonDialog() {
-    this.showPolygonDialog = false;
+    this.isAddShapeDialogOpen = false;
   }
 
-startMove(event: MouseEvent) {
+startMove(event: MouseEvent) {// check if we clicked on text or polygon layers 
   const pos = this.getMousePos(event);
 
   for (let i = this.layers.length - 1; i >= 0; i--) {
     const layer = this.layers[i];
 
-    if (layer.type === 'text' && layer.visible !== false) {
+    if (layer.type === 'text' && layer.visible !== false) { //  newest layer is first
       const { position, width, height } = layer.data;
       if (
         pos.x >= position.x &&
@@ -122,13 +122,13 @@ startMove(event: MouseEvent) {
   }
 }
 
-isPointInPolygon(point: Point, polygon: Point[]): boolean {
+isPointInPolygon(point: Point, polygon: Point[]): boolean { //checking if point is in the polygon using point clipping
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const xi = polygon[i].x, yi = polygon[i].y;
     const xj = polygon[j].x, yj = polygon[j].y;
-    const intersect = ((yi > point.y) !== (yj > point.y)) &&
-      (point.x < (xj - xi) * (point.y - yi) / (yj - yi + 0.00001) + xi);
+    const intersect = ((yi > point.y) !== (yj > point.y)) && //check if the point is between yi and yj and not above or below 
+      (point.x < (xj - xi) * (point.y - yi) / (yj - yi + 0.00001) + xi); //checking if we are in the right side from the edge
     if (intersect) inside = !inside;
   }
   return inside;
@@ -140,7 +140,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
       const pos = this.getMousePos(event);
       this.selectedTextLayer.data.position.x = pos.x - this.offsetX;
       this.selectedTextLayer.data.position.y = pos.y - this.offsetY;
-      this.redraw();
+      this.redraw(); // in every movment of the polygon we drwing the canvas layers again  
     }
 
     if (this.isDraggingPolygon && this.selectedPolygonLayer) {
@@ -149,11 +149,11 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
       const dx = pos.x - this.offsetX - layer.data.center.x;
       const dy = pos.y - this.offsetY - layer.data.center.y;
 
-      // Move center
+      // updating center
       layer.data.center.x += dx;
       layer.data.center.y += dy;
 
-      // Move points
+      // updating points of polygons (if needed)
       if (layer.data.points) {
         layer.data.points = layer.data.points.map((p: Point) => ({
           x: p.x + dx,
@@ -176,6 +176,8 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
     }
   }
 
+
+  // every time there is a change in the layers ,we redraw all the layers on the canvas by using ctx.
   redraw() {
     const canvas = this.canvasRef.nativeElement;
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -195,7 +197,7 @@ isPointInPolygon(point: Point, polygon: Point[]): boolean {
   }
 
  
-drawPolygon(data: any) { // we rendereing the whole canvas so each time we create a new polygon we have different setting for it 
+drawPolygon(data: any) { // we rendereing the whole canvas so each time we create a new polygon or edditing we have different setting for it 
   this.ctx.strokeStyle = data.color || '#000000';
   this.ctx.lineWidth = data.thickness || 1;
   this.ctx.fillStyle = data.fillColor || 'transparent';  // Default: no fill
@@ -203,8 +205,8 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
   if (data.center && data.radius) {
     this.ctx.beginPath();
     this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI);
-    this.ctx.fill();   // fill first
-    this.ctx.stroke(); // then stroke
+    this.ctx.fill();   
+    this.ctx.stroke(); 
   } else if (data.points && data.points.length > 0) {
     this.ctx.beginPath();
     this.ctx.moveTo(data.points[0].x, data.points[0].y);
@@ -261,7 +263,7 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
       order: this.counter++,
       visible: true
     });
-    this.showPolygonDialog = false;
+    this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
@@ -284,7 +286,7 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
       order: this.counter++,
       visible: true
     });
-    this.showPolygonDialog = false;
+    this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
@@ -298,11 +300,11 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
       order: this.counter++,
       visible: true
     });
-    this.showPolygonDialog = false;
+    this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
-  handleEdit(index: number) {
+  handleEdit(index: number) { // updating the edit of polygon or text
     const layer = this.layers[index];
     if (layer.type === 'text') {
       this.editingLayerIndex = index;
