@@ -4,10 +4,12 @@
     <button (click)="clearCanvas()">Clear Canvas</button>
     <button (click)="addTextLayer()">Add Text</button>
     <button (click)="openAddPolygonDialog()">Add Polygon</button>
+    <button *ngIf="currentMode==='move'" (click)="currentMode='draw'">Draw</button>
+    <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">Stop Drawing</button>
     <button (click)="saveLayers()">Save</button>
     <button (click)="loadLayers()">Load</button>
 
-    <div *ngIf="editingLayerIndex !== null" class="edit-toolbar">
+    <div *ngIf="currentMode==='move' && editingLayerIndex !== null" class="edit-toolbar">
       <label>
         <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
         Bold
@@ -23,7 +25,7 @@
       <button (click)="cancelEdit()">Cancel</button>
     </div>
 
-    <div *ngIf="polygonEditingLayerIndex !== null" class="edit-toolbar">
+    <div *ngIf="currentMode==='move' && polygonEditingLayerIndex !== null" class="edit-toolbar">
       <label>
         Size:
         <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
@@ -43,6 +45,49 @@
       <button (click)="cancelPolygonEdit()">Cancel</button>
     </div>
 
+    <div *ngIf="currentMode === 'draw' && drawEditingLayerIndex === null"
+        class="edit-toolbar">
+      <label>
+        Line Color:
+        <input
+          type="color"
+          [(ngModel)]="drawOptions.color"
+        >
+      </label>
+      <label>
+        Thickness:
+        <input
+          type="number"
+          [(ngModel)]="drawOptions.thickness"
+          min="1" max="20"
+        >
+      </label>
+      <button (click)="currentMode='move'">Stop Drawing</button>
+    </div>
+
+    <div *ngIf="currentMode === 'move' && drawEditingLayerIndex !== null"
+        class="edit-toolbar">
+      <label>
+        Line Color:
+        <input
+          type="color"
+          [(ngModel)]="drawOptions.color"
+          (input)="updateDrawLiveEdit()"
+        >
+      </label>
+      <label>
+        Thickness:
+        <input
+          type="number"
+          [(ngModel)]="drawOptions.thickness"
+          min="1" max="20"
+          (input)="updateDrawLiveEdit()"
+        >
+      </label>
+      <button (click)="cancelDrawEdit()">Cancel</button>
+    </div>
+
+
   </div>
 
   
@@ -51,10 +96,12 @@
 
   <div class="container">
     <div class="canvas-wrapper">
-      <canvas #canvas width="900" height="800"
-              (mousedown)="startMove($event)"
-              (mousemove)="move($event)"
-              (mouseup)="endMove()"></canvas>
+      <canvas
+        #canvas width="900" height="800"
+        (mousedown)="onPointerDown($event)"
+        (mousemove)="onPointerMove($event)"
+        (mouseup)="onPointerUp()">
+      </canvas>
       <app-layers 
         [layers]="layers" 
         (onDelete)="handleDelete($event)" 
