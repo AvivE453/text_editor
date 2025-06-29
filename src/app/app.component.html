@@ -26,10 +26,12 @@
     </div>
 
     <div *ngIf="currentMode==='move' && polygonEditingLayerIndex !== null" class="edit-toolbar">
+      <div *ngIf ="layers[polygonEditingLayerIndex]?.type !== 'polygonPoints'">
       <label>
         Size:
         <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
       </label>
+      </div>
       <label>
         Color:
         <input type="color" [(ngModel)]="polygonEditOptions.color" (input)="updatePolygonLiveEdit()">
