@@ -1,14 +1,22 @@
 <main class="main">
-  <div class="toolbar">
-    <button (click)="uploadImage()">Upload Image</button>
-    <button (click)="clearCanvas()">Clear Canvas</button>
-    <button (click)="addTextLayer()">Add Text</button>
-    <button (click)="openAddPolygonDialog()">Add Polygon</button>
-    <button *ngIf="currentMode==='move'" (click)="currentMode='draw'">Draw</button>
-    <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">Stop Drawing</button>
-    <button (click)="saveLayers()">Save</button>
-    <button (click)="loadLayers()">Load</button>
+  
+ <div class="layer-picker toolbar">
+  <button (click)="saveLayers()">Save</button>
+  <button (click)="loadLayers()">Load</button>
+  <button (click)="uploadImage()">Upload Image</button>
+      <button (click)="clearCanvas()">Clear Canvas</button>
 
+    <button (click)="addNewLayer('text')" value="text">Add Text Layer</button>
+    <button (click)="addNewLayer('polygon')" value="polygon">Add Polygon Layer</button>
+</div>
+
+  <div *ngIf="layers.length > 0" class="toolbar">
+    <button *ngIf="layers[currentLayerIndex].type==='text'" (click)="addTextLayer()">Add Text</button>
+    <div *ngIf="layers[currentLayerIndex].type == 'polygon'">
+      <button (click)="openAddPolygonDialog()">Add Polygon</button>
+      <button *ngIf="currentMode==='move'" (click)="currentMode='draw'">Draw</button>
+      <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">Stop Drawing</button>
+    </div>
     <div *ngIf="currentMode==='move' && editingLayerIndex !== null" class="edit-toolbar">
       <label>
         <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
@@ -26,7 +34,7 @@
     </div>
 
     <div *ngIf="currentMode==='move' && polygonEditingLayerIndex !== null" class="edit-toolbar">
-      <div *ngIf ="layers[polygonEditingLayerIndex]?.type !== 'polygonPoints'">
+      <div *ngIf ="layers[currentLayerIndex].items[polygonEditingLayerIndex]?.subType !== 'polygonPoints'">
       <label>
         Size:
         <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
@@ -106,12 +114,17 @@
         (click)="currentMode==='polygonPoints' && onCanvasClick($event)"
         (dblclick)="onCanvasDblClick($event)">
       </canvas>
-      <app-layers 
-        [layers]="layers" 
-        (onDelete)="handleDelete($event)" 
-        (onEdit)="handleEdit($event)" 
-        (onToggleVisibility)="handleToggleVisibility($event)">
-      </app-layers>
+    <app-layers
+  [layers]="layers"
+  (onDeleteLayer)="handleLayerDelete($event)"
+  (onToggleLayerVis)="handleLayerToggle($event)"
+  (onDeleteItem)="handleItemDelete($event.layer,$event.item)"
+  (onEditItem)="handleItemEdit($event.layer,$event.item)"
+  (onToggleItemVis)="handleItemToggle($event.layer,$event.item)"
+  (layerSelected)="currentLayerIndex = $event"
+
+></app-layers>
+
     </div>
   </div>
 

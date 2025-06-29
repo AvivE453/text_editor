@@ -10,8 +10,10 @@ main.main {
     justify-content: center;
     gap: 12px;
     margin-bottom: 1rem;
+    align-items: center;
 
     button {
+      align-self: stretch;
       padding: 0.6rem 1.2rem;
       background-color: #007bff;
       border: 1px solid #ccc;

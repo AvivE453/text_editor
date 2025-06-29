@@ -1,17 +1,36 @@
 <div class="layers">
-  <div *ngFor="let layer of layers; let i = index" 
-       class="layer-item" 
+  <div class="layers" *ngIf="layers.length > 0">
+
+  <div *ngFor="let layer of layers; let i = index"
+       class="layer-item"
        [class.selected]="selectedLayerIndex === i"
        (click)="selectLayer(i)">
-       
     <p>Layer {{ i + 1 }} ({{ layer.type }})</p>
 
-    <div *ngIf="selectedLayerIndex === i">
-      <button (click)="deleteLayer(i); $event.stopPropagation()">Delete</button>
-      <button (click)="editLayer(i); $event.stopPropagation()">Edit</button>
+    <!-- layer controls -->
+    <div *ngIf="selectedLayerIndex === i" class="layer-controls">
+      <button (click)="deleteLayer(i); $event.stopPropagation()">Delete Layer</button>
       <button (click)="toggleLayerVisibility(i); $event.stopPropagation()">
         {{ layer.visible ? 'Hide' : 'Show' }}
       </button>
     </div>
+
+    <!-- item list -->
+    <ul *ngIf="layer.items?.length" class="item-list">
+      <li *ngFor="let item of layer.items; let j = index"
+          class="item-entry"
+          [class.selected]="selectedLayerIndex === i && selectedItemIndex === j"
+          (click)="selectItem(i, j); $event.stopPropagation()">
+        {{ item.subType | titlecase }} #{{ j + 1 }}
+
+        <!-- item controls -->
+        <button (click)="deleteItem(i, j); $event.stopPropagation()">Delete</button>
+        <button (click)="editItem(i, j); $event.stopPropagation()">Edit</button>
+        <button (click)="toggleItemVisibility(i, j); $event.stopPropagation()">
+          {{ item.visible !== false ? 'Hide' : 'Show' }}
+        </button>
+      </li>
+    </ul>
   </div>
+  </div>  
 </div>
