@@ -540,11 +540,11 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
       this.polygonEditingLayerIndex = index;
       this.editingLayerIndex = null;
       this.drawEditingLayerIndex = null;
-      const { color = '#000000', thickness = 1 } = layer.data;
+      const { color = '#000000',fillColor='transparent', thickness = 1 } = layer.data;
       this.polygonEditOptions = {
         size: 50,
         color,
-        fillColor: 'transparent',
+        fillColor,
         thickness
       };
     } else if (layer.type === 'draw') {
