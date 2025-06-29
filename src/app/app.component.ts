@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild ,  } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { LayersComponent } from './layers/layers.component';
@@ -9,11 +9,12 @@ interface Point {
 }
 
 interface Layer {
-  type: 'polygon' | 'text' | 'draw';
+  type: 'polygon' | 'text' | 'draw' |'polygonPoints' ;
   data: any;
   order: number;
   visible: boolean;
 }
+
 
 @Component({
   selector: 'app-root',
@@ -29,15 +30,23 @@ export class AppComponent { //references to elements in the HTML
 
   baseImage: HTMLImageElement | null = null;
   ctx!: CanvasRenderingContext2D;
-  drawing = false;
   @Input() layers: Layer[] = [];
+
+  isdrawing = false;
   isAddShapeDialogOpen = false;
+  isDrawingPolygonByClick = false;
+  isDraggingText = false;
+  isDraggingPolygon = false;
+  isDraggingDrawLayer = false;
+  offsetX = 0;
+  offsetY = 0;
   counter = 0;
 
 
-  currentMode: 'move' | 'draw' = 'move';
+  currentMode: 'move' | 'draw' | 'polygonPoints' = 'move';
 
-  currentStroke: Point[] = [];
+  currentDrawPoints: Point[] = []; // points to draw with by hand
+  currentPolygonPoints: Point[] = []; // points to draw polygon
   selectedTextLayer: Layer | null = null;
   editingLayerIndex: number | null = null;
   selectedPolygonLayer: Layer | null = null;
@@ -47,7 +56,7 @@ export class AppComponent { //references to elements in the HTML
 
   
   dragStartMouse: Point = { x: 0, y: 0 }; 
-  dragStartPoints: Point[] = []; //data of the stroke’s points at drag start 
+  dragStartPoints: Point[] = []; //data for draw by hand points location when dragging
 
   editOptions = {
     bold: false,
@@ -67,11 +76,7 @@ export class AppComponent { //references to elements in the HTML
     thickness: 2
   };
 
-  isDraggingText = false;
-  isDraggingPolygon = false;
-  isDraggingDrawLayer = false;
-  offsetX = 0;
-  offsetY = 0;
+
 
 
 
@@ -92,6 +97,74 @@ export class AppComponent { //references to elements in the HTML
 
   closeAddPolygonDialog() {
     this.isAddShapeDialogOpen = false;
+  }
+
+
+  enterPolygonByClickMode() {
+  // close the standard “Add Shape” dialog
+    this.isAddShapeDialogOpen = false;
+    this.currentMode = 'polygonPoints';
+    this.currentPolygonPoints = [];
+    this.isDrawingPolygonByClick = true;
+  }
+
+  
+  onCanvasClick(evt: MouseEvent) {
+    if (this.currentMode === 'polygonPoints') {
+      const pt = this.getMousePos(evt);
+      this.currentPolygonPoints.push(pt);
+
+      // 1) redraw background layers
+      this.redraw();
+
+      // 2) set your live-draw style
+      this.ctx.strokeStyle = this.polygonEditOptions.color;
+      this.ctx.lineWidth   = this.polygonEditOptions.thickness;
+
+      // 3) draw the entire polyline so far
+      if (this.currentPolygonPoints.length > 1) {
+        this.ctx.beginPath();
+        const pts = this.currentPolygonPoints;
+        this.ctx.moveTo(pts[0].x, pts[0].y);
+        pts.slice(1).forEach(p => this.ctx.lineTo(p.x, p.y));
+        this.ctx.stroke();
+      }
+    } else {
+      this.startMove(evt);
+    }
+}
+
+
+
+  onCanvasDblClick(evt: MouseEvent) {
+    if (this.currentMode === 'polygonPoints' && this.currentPolygonPoints.length >= 3) {
+      // close the loop
+      const pts = [...this.currentPolygonPoints, this.currentPolygonPoints[0]];
+      // compute centroid
+      const center = pts.slice(0,-1).reduce((c,p,i,arr) => ({ 
+        x: c.x + p.x/arr.length, 
+        y: c.y + p.y/arr.length 
+      }), { x:0,y:0 });
+      // push new layer
+      this.layers.push({
+        type: 'polygonPoints',
+        data: {
+          points: pts,
+          center,
+          color: this.polygonEditOptions.color,
+          fillColor: this.polygonEditOptions.fillColor,
+          thickness: this.polygonEditOptions.thickness
+        },
+        order: this.counter++,
+        visible: true
+      });
+      // reset
+      this.currentPolygonPoints = [];
+      this.isDrawingPolygonByClick = false;
+      this.endMove();
+      this.currentMode = 'move';
+      this.redraw();
+    }
   }
 
   startMove(event: MouseEvent) {// check if we clicked on text or polygon layers 
@@ -117,7 +190,7 @@ export class AppComponent { //references to elements in the HTML
       }
 
 
-      if (layer.type === 'polygon' && layer.visible !== false) {
+      if ((layer.type === 'polygon' || layer.type === 'polygonPoints') && layer.visible !== false) {
         const data = layer.data;
         if (data.points) {
           // triangle and square polygon
@@ -250,17 +323,17 @@ export class AppComponent { //references to elements in the HTML
   onPointerDown(evt: MouseEvent) {
     if (this.currentMode === 'draw') {
       // Start a new freehand stroke
-      this.drawing = true;
-      this.currentStroke = [ this.getMousePos(evt) ];
+      this.isdrawing = true;
+      this.currentDrawPoints = [ this.getMousePos(evt) ];
     } else {
       this.startMove(evt); // dragging
     }
   }
 
   onPointerMove(evt: MouseEvent) {
-    if (this.currentMode === 'draw' && this.drawing) {
+    if (this.currentMode === 'draw' && this.isdrawing) {
       const pos = this.getMousePos(evt);
-      const points = this.currentStroke;
+      const points = this.currentDrawPoints;
       const prev = points[points.length - 1];
       points.push(pos);
 
@@ -277,12 +350,12 @@ export class AppComponent { //references to elements in the HTML
   }
 
   onPointerUp() {
-    if (this.currentMode === 'draw' && this.drawing) {
+    if (this.currentMode === 'draw' && this.isdrawing) {
       // add the new layer
       this.layers.push({
         type: 'draw',
         data: {
-          points: [...this.currentStroke],
+          points: [...this.currentDrawPoints],
           color: this.drawOptions.color,
           thickness: this.drawOptions.thickness
         },
@@ -290,8 +363,8 @@ export class AppComponent { //references to elements in the HTML
         visible: true
       });
 
-      this.drawing = false;
-      this.currentStroke = [];
+      this.isdrawing = false;
+      this.currentDrawPoints = [];
       this.redraw();
     } else {
       this.endMove(); // end dragging
@@ -316,7 +389,7 @@ export class AppComponent { //references to elements in the HTML
 
     this.layers.forEach(layer => {
       if (!layer.visible) return;
-      if (layer.type === 'polygon') {
+      if (layer.type === 'polygon' || layer.type === 'polygonPoints') {
         this.drawPolygon(layer.data);
       } else if (layer.type === 'text') {
         this.drawText(layer.data.text, layer.data.position);
@@ -463,7 +536,7 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
         fontSize: sizeMatch ? parseInt(sizeMatch[1]) : 16,
         color
       };
-    } else if (layer.type === 'polygon') {
+    } else if (layer.type === 'polygon' || layer.type === 'polygonPoints') {
       this.polygonEditingLayerIndex = index;
       this.editingLayerIndex = null;
       this.drawEditingLayerIndex = null;
@@ -506,7 +579,7 @@ drawPolygon(data: any) { // we rendereing the whole canvas so each time we creat
   updatePolygonLiveEdit() {
     if (this.polygonEditingLayerIndex === null) return;
     const layer = this.layers[this.polygonEditingLayerIndex];
-    if (layer.type !== 'polygon') return;
+    if (layer.type !== 'polygon' && layer.type !== 'polygonPoints') return;
 
     // Apply color and thickness
     layer.data.color = this.polygonEditOptions.color;

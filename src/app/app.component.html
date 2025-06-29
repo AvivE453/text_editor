@@ -100,7 +100,9 @@
         #canvas width="900" height="800"
         (mousedown)="onPointerDown($event)"
         (mousemove)="onPointerMove($event)"
-        (mouseup)="onPointerUp()">
+        (mouseup)="onPointerUp()"
+        (click)="currentMode==='polygonPoints' && onCanvasClick($event)"
+        (dblclick)="onCanvasDblClick($event)">
       </canvas>
       <app-layers 
         [layers]="layers" 
@@ -117,6 +119,7 @@
       <button (click)="addSquareLayer()">Square</button>
       <button (click)="addTriangleLayer()">Triangle</button>
       <button (click)="addCircleLayer()">Circle</button>
+      <button (click)="enterPolygonByClickMode()">Draw Polygon by Points</button>
       <button (click)="closeAddPolygonDialog()">Cancel</button>
     </div>
   </div>
