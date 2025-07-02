@@ -8,6 +8,7 @@ interface Point {
   y: number;
 }
 
+//A layer can have multiple items, each item can be a different type of polygon or text respectively to layer type.
 type ItemType =
   | 'circle'
   | 'square'
@@ -16,17 +17,15 @@ type ItemType =
   | 'polygonPoints'
   | 'text';
 
-  export interface Item {
-  subType: ItemType; // what kind of thing this is
-  data: any; // the old data blob you were using
-  order: number;
+export interface Item {
+  subType: ItemType;
+  data: any;
   visible: boolean;
-  }
+}
 
+//A multiple layers can be applied on the canvas (which displays an image), each layer can be a polygon or text.
 export interface Layer {
   type: 'polygon' | 'text';
-  // data: any;
-  order: number;
   visible: boolean;
   items: Array<Item>;
 }
@@ -38,8 +37,10 @@ export interface Layer {
   standalone: true,
   imports: [FormsModule, CommonModule, LayersComponent],
 })
+//FormsModule is used for ngModel, CommonModule is used for ngIf and ngFor
 export class AppComponent {
   //references to elements in the HTML
+  //View child grab a reference to a child component
   @ViewChild('canvas', { static: true })
   canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false })
@@ -48,40 +49,44 @@ export class AppComponent {
   imageInputRef!: ElementRef<HTMLInputElement>;
 
   baseImage: HTMLImageElement | null = null;
-  ctx!: CanvasRenderingContext2D;
-  @Input() layers: Layer[] = [];
-  currentLayerIndex: number = -1;
-  isdrawing = false;
+  ctx!: CanvasRenderingContext2D; /*The CanvasRenderingContext2D is the primary API for drawing and manipulating 2D graphics
+   on an HTML <canvas> element. In brief:
+ */
+  @Input() layers: Layer[] = []; //The input allows the layers component to receive layers from the app component
+  currentLayerIndex: number = -1; //an index of the current layer that is being seleected.
+  isdrawing = false; //darwing by hand on the canvas
   isAddShapeDialogOpen = false;
   isDrawingPolygonByClick = false;
   isDraggingText = false;
   isDraggingPolygon = false;
-  isDraggingDrawLayer = false;
+  isDraggingDrawItem = false;
+  //offsetX and offsetY are used to calculate the position of the text or polygon when dragging
   offsetX = 0;
   offsetY = 0;
-  counter = 0;
 
+  // Identifies the current mode of interaction with the canvas moving items on canvas, drawing by hand or drawing polygon by points
   currentMode: 'move' | 'draw' | 'polygonPoints' = 'move';
-  selectedLayer: 'text' | 'polygon' = 'text';
-  currentDrawPoints: Point[] = []; // points to draw with by hand
-  currentPolygonPoints: Point[] = []; // points to draw polygon
-  selectedTextLayer: Item | null = null; // selected text layer
-  editingLayerIndex: number | null = null;
-  selectedPolygonLayer: Item | null = null;
-  polygonEditingLayerIndex: number | null = null;
-  selectedDrawLayer: Item | null = null;
-  drawEditingLayerIndex: number | null = null;
+  currentDrawPoints: Point[] = []; // points to draw by hand
+  currentPolygonPoints: Point[] = []; // Array of points for drawing polygon by click
+  selectedTextItem: Item | null = null; // selected text item
+  editingItemIndex: number | null = null;
+  selectedPolygonItem: Item | null = null;
+  polygonEditingItemIndex: number | null = null;
+  selectedDrawItem: Item | null = null;
+  drawEditingItemIndex: number | null = null;
 
-  dragStartMouse: Point = { x: 0, y: 0 };
-  dragStartPoints: Point[] = []; //data for draw by hand points location when dragging
+  dragStartMouse: Point = { x: 0, y: 0 }; //starting mouse position when dragging in freehand mode
+  dragStartPoints: Point[] = []; // starting points of the freehand stroke when draggingS
 
   editOptions = {
+    //text editing options
     bold: false,
     fontSize: 16,
     color: '#000000',
   };
 
   polygonEditOptions = {
+    // polygon editing options
     size: 50,
     color: '#000000',
     fillColor: 'transparent',
@@ -89,25 +94,24 @@ export class AppComponent {
   };
 
   drawOptions = {
+    //freehand drawing options
     color: '#000000',
     thickness: 2,
   };
 
+  ngOnInit() {
+    // Initialize the canvas context
+    this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
+  }
+
   addNewLayer(selected: 'text' | 'polygon' = 'text') {
     this.layers.push({
       items: [],
-      type: selected,
-      order: this.counter++,
+      type: selected, // type of the layer, can be polygon or text, selected by clicking the corrospond button
       visible: true,
     });
     this.currentLayerIndex = this.layers.length - 1;
-    this.redraw();   // ← add this line
-
-  }
-
-  ngOnInit() {
-    //conecting the canvas and they layers
-    this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
+    this.redraw();
   }
 
   getMousePos(event: MouseEvent): Point {
@@ -124,8 +128,8 @@ export class AppComponent {
     this.isAddShapeDialogOpen = false;
   }
 
+  //enter polygon points by click mode
   enterPolygonByClickMode() {
-    // close the standard “Add Shape” dialog
     this.isAddShapeDialogOpen = false;
     this.currentMode = 'polygonPoints';
     this.currentPolygonPoints = [];
@@ -134,22 +138,17 @@ export class AppComponent {
 
   onCanvasClick(evt: MouseEvent) {
     if (this.currentMode === 'polygonPoints') {
-      const pt = this.getMousePos(evt);
-      this.currentPolygonPoints.push(pt);
-
-      // 1) redraw background layers
+      const point = this.getMousePos(evt);
+      this.currentPolygonPoints.push(point);
       this.redraw();
-
-      // 2) set your live-draw style
       this.ctx.strokeStyle = this.polygonEditOptions.color;
       this.ctx.lineWidth = this.polygonEditOptions.thickness;
-
-      // 3) draw the entire polyline so far
+      // Draw the resulting polygon points on the canvas
       if (this.currentPolygonPoints.length > 1) {
-        this.ctx.beginPath();
-        const pts = this.currentPolygonPoints;
-        this.ctx.moveTo(pts[0].x, pts[0].y);
-        pts.slice(1).forEach((p) => this.ctx.lineTo(p.x, p.y));
+        this.ctx.beginPath(); // begin a new path for drawing.
+        const points = this.currentPolygonPoints;
+        this.ctx.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((p) => this.ctx.lineTo(p.x, p.y));
         this.ctx.stroke();
       }
     } else {
@@ -160,12 +159,15 @@ export class AppComponent {
   onCanvasDblClick(evt: MouseEvent) {
     if (
       this.currentMode === 'polygonPoints' &&
-      this.currentPolygonPoints.length >= 3
+      this.currentPolygonPoints.length >= 3 // at least 3 points to form a polygon
     ) {
       // close the loop
-      const pts = [...this.currentPolygonPoints, this.currentPolygonPoints[0]];
-      // compute centroid
-      const center = pts.slice(0, -1).reduce(
+      const points = [
+        ...this.currentPolygonPoints,
+        this.currentPolygonPoints[0],
+      ];
+      // compute center - used for dragging the polygon
+      const center = points.slice(0, -1).reduce(
         (c, p, i, arr) => ({
           x: c.x + p.x / arr.length,
           y: c.y + p.y / arr.length,
@@ -176,16 +178,15 @@ export class AppComponent {
       this.layers[this.currentLayerIndex].items.push({
         subType: 'polygonPoints',
         data: {
-          points: pts,
+          points: points,
           center,
           color: this.polygonEditOptions.color,
           fillColor: this.polygonEditOptions.fillColor,
           thickness: this.polygonEditOptions.thickness,
         },
-        order: this.counter++,
         visible: true,
       });
-      // reset
+      // reset after adding the polygon
       this.currentPolygonPoints = [];
       this.isDrawingPolygonByClick = false;
       this.endMove();
@@ -195,120 +196,138 @@ export class AppComponent {
   }
 
   startMove(event: MouseEvent) {
-    // check if we clicked on text or polygon layers
-    const pos = this.getMousePos(event);
+    // check if we clicked on text or polygon items
+    const mousePos = this.getMousePos(event);
 
     for (let i = this.layers.length - 1; i >= 0; i--) {
       const layer = this.layers[i];
       for (let j = layer.items.length - 1; j >= 0; j--) {
-      const item = layer.items[j];
-      if (layer.type === 'text' && layer.visible !== false) {
-        //  newest layer is first
-        const { position, width, height } = item.data;
+        const item = layer.items[j];
         if (
-          pos.x >= position.x &&
-          pos.x <= position.x + width &&
-          pos.y >= position.y - height &&
-          pos.y <= position.y
+          item.subType === 'text' &&
+          layer.visible !== false &&
+          item.visible !== false
         ) {
-          this.selectedTextLayer = item;
-          this.isDraggingText = true;
-          this.offsetX = pos.x - position.x;
-          this.offsetY = pos.y - position.y;
-          return;
-        }
-      }
-
-      if (
-        (layer.type === 'polygon' || item.subType === 'polygonPoints') &&
-        layer.visible !== false
-      ) {
-        const data = item.data;
-        if (data.points) {
-          // triangle and square polygon
-          if (this.isPointInPolygon(pos, data.points)) {
-            this.selectedPolygonLayer = item;
-            this.isDraggingPolygon = true;
-            this.offsetX = pos.x - data.center.x;
-            this.offsetY = pos.y - data.center.y;
-            return;
-          }
-        } else if (data.center && data.radius) {
-          //  circle
-          const distance = Math.hypot(
-            pos.x - data.center.x,
-            pos.y - data.center.y
-          );
-          if (distance <= data.radius) {
-            this.selectedPolygonLayer = item;
-            this.isDraggingPolygon = true;
-            this.offsetX = pos.x - data.center.x;
-            this.offsetY = pos.y - data.center.y;
+          //  newest item is first
+          const { position, width, height } = item.data;
+          if (
+            //find the item that was clicked
+            mousePos.x >= position.x &&
+            mousePos.x <= position.x + width &&
+            mousePos.y >= position.y - height &&
+            mousePos.y <= position.y
+          ) {
+            this.selectedTextItem = item;
+            this.isDraggingText = true;
+            this.offsetX = mousePos.x - position.x;
+            this.offsetY = mousePos.y - position.y;
             return;
           }
         }
-      }
 
-      if (item.subType === 'freehand' && layer.visible !== false) {
-        const points = item.data.points as Point[];
-        const threshold = (item.data.thickness || 1) * 2;
+        if (
+          (layer.type === 'polygon' && item.subType !== 'freehand') &&  layer.visible !== false && item.visible !== false ) {
+          const data = item.data;
+          if (data.points) {
+            // triangle and square polygon
+            if (this.isPointInPolygon(mousePos, data.points)) {
+              this.selectedPolygonItem = item;
+              this.isDraggingPolygon = true;
+              this.offsetX = mousePos.x - data.center.x;
+              this.offsetY = mousePos.y - data.center.y;
+              return;
+            }
+          } else if (data.center && data.radius) {
+            //  circle
+            const distance = Math.hypot(
+              mousePos.x - data.center.x,
+              mousePos.y - data.center.y
+            );
+            if (distance <= data.radius) { // check if the click does not exceed the radius
+              this.selectedPolygonItem = item;
+              this.isDraggingPolygon = true;
+              this.offsetX = mousePos.x - data.center.x;
+              this.offsetY = mousePos.y - data.center.y;
+              return;
+            }
+          }
+        }
 
-        // scan each segment
-        for (let j = 0; j < points.length - 1; j++) {
-          const A = points[j],
-            B = points[j + 1];
-          // distance from click to segment AB
-          const dx = B.x - A.x,
-            dy = B.y - A.y;
-          const t =
-            ((pos.x - A.x) * dx + (pos.y - A.y) * dy) / (dx * dx + dy * dy);
-          let closest: Point;
-          if (t < 0) closest = A;
-          else if (t > 1) closest = B;
-          else closest = { x: A.x + t * dx, y: A.y + t * dy };
-          const dist = Math.hypot(pos.x - closest.x, pos.y - closest.y);
+        if (item.subType === 'freehand' && layer.visible !== false) {
+          const points = item.data.points as Point[];
+          const threshold = (item.data.thickness || 1) * 2;   // Set a hit threshold based on stroke thickness (twice the thickness)
 
-          if (dist <= threshold) {
-            // — we hit the stroke at segment j!
-            this.selectedDrawLayer = item;
-            this.isDraggingDrawLayer = true;
-            // store starting mouse + points snapshot
-            this.dragStartMouse = pos;
-            this.dragStartPoints = points.map((p) => ({ x: p.x, y: p.y }));
-            return;
-          }}
+
+          // Iterate over each line segment in the stroke
+          for (let j = 0; j < points.length - 1; j++) {
+            const A = points[j],
+              B = points[j + 1];
+            // Compute segmrnt length from A to B
+            const dx = B.x - A.x,
+              dy = B.y - A.y;
+             // Project the mouse click onto the line AB (normalized t in [0,1])
+            const t =
+              ((mousePos.x - A.x) * dx + (mousePos.y - A.y) * dy) /
+              (dx * dx + dy * dy);
+            let closest: Point;     // Find the closest point on AB to the mouse click
+            if (t < 0) closest = A;
+            else if (t > 1) closest = B;
+            else closest = { x: A.x + t * dx, y: A.y + t * dy }; //Closest point within the segment; using interpolation
+
+            const dist = Math.hypot(
+              mousePos.x - closest.x,
+              mousePos.y - closest.y
+            );
+
+            if (dist <= threshold) { //if within the threshold distance start dragging
+              this.selectedDrawItem = item;
+              this.isDraggingDrawItem = true;
+              // store starting mouse and stroke points for dragging
+              this.dragStartMouse = mousePos;
+              this.dragStartPoints = points.map((p) => ({ x: p.x, y: p.y })); // create a copy of the points to avoid mutation
+              return;
+            }
+          }
         }
       }
     }
   }
 
-  isPointInPolygon(point: Point, polygon: Point[]): boolean {
-    //checking if point is in the polygon using point clipping
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x,
-        yi = polygon[i].y;
-      const xj = polygon[j].x,
-        yj = polygon[j].y;
-      const intersect =
-        yi > point.y !== yj > point.y && //check if the point is between yi and yj and not above or below
-        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi + 0.00001) + xi; //checking if we are in the right side from the edge
-      if (intersect) inside = !inside;
-    }
-    return inside;
+ isPointInPolygon(mousePoint: Point, polygonPoints: Point[]): boolean { //algoithm for clipping points
+  let inside = false;
+  const len = polygonPoints.length;
+
+  for (let i = 0; i < len; i++) {
+    // current vertex
+    const { x: xi, y: yi } = polygonPoints[i];
+    // next vertex, wrapping back to 0 at the end
+    const { x: xj, y: yj } = polygonPoints[(i + 1) % len];
+
+    const crossesY = (yi > mousePoint.y) !== (yj > mousePoint.y);
+    if (!crossesY) continue;
+
+    // Compute intersection X without worrying about dividing by zero
+    const slope = (xj - xi) / (yj - yi);
+    const intersectX = xi + (mousePoint.y - yi) * slope;
+
+  // If the intersection is to the right of the point, flip the flag (points order is clockwise)
+    if (mousePoint.x < intersectX) inside = !inside;
   }
+
+  return inside;
+}
 
   move(event: MouseEvent) {
-    if (this.isDraggingText && this.selectedTextLayer) {
+    if (this.isDraggingText && this.selectedTextItem) {
       const pos = this.getMousePos(event);
-      this.selectedTextLayer.data.position.x = pos.x - this.offsetX;
-      this.selectedTextLayer.data.position.y = pos.y - this.offsetY;
+      this.selectedTextItem.data.position.x = pos.x - this.offsetX;
+      this.selectedTextItem.data.position.y = pos.y - this.offsetY;
       this.redraw(); // in every movment of the polygon we drwing the canvas layers again
     }
 
-    if (this.isDraggingPolygon && this.selectedPolygonLayer) {
+    if (this.isDraggingPolygon && this.selectedPolygonItem) {
       const pos = this.getMousePos(event);
-      const item = this.selectedPolygonLayer;
+      const item = this.selectedPolygonItem;
       const dx = pos.x - this.offsetX - item.data.center.x;
       const dy = pos.y - this.offsetY - item.data.center.y;
 
@@ -316,7 +335,7 @@ export class AppComponent {
       item.data.center.x += dx;
       item.data.center.y += dy;
 
-      // updating points of polygons (if needed)
+      // updating points of polygons if not circle
       if (item.data.points) {
         item.data.points = item.data.points.map((p: Point) => ({
           x: p.x + dx,
@@ -327,13 +346,13 @@ export class AppComponent {
       this.redraw();
     }
 
-    if (this.isDraggingDrawLayer && this.selectedDrawLayer) {
+    if (this.isDraggingDrawItem && this.selectedDrawItem) {
       const pos = this.getMousePos(event);
       const dx = pos.x - this.dragStartMouse.x;
       const dy = pos.y - this.dragStartMouse.y;
 
       // rebuild the stroke from the starting point
-      this.selectedDrawLayer.data.points = this.dragStartPoints.map((p) => ({
+      this.selectedDrawItem.data.points = this.dragStartPoints.map((p) => ({
         x: p.x + dx,
         y: p.y + dy,
       }));
@@ -345,60 +364,57 @@ export class AppComponent {
   endMove() {
     if (this.isDraggingText) {
       this.isDraggingText = false;
-      this.selectedTextLayer = null;
+      this.selectedTextItem = null;
     }
     if (this.isDraggingPolygon) {
       this.isDraggingPolygon = false;
-      this.selectedPolygonLayer = null;
+      this.selectedPolygonItem = null;
     }
-    if (this.isDraggingDrawLayer) {
-      this.isDraggingDrawLayer = false;
-      this.selectedDrawLayer = null;
+    if (this.isDraggingDrawItem) {
+      this.isDraggingDrawItem = false;
+      this.selectedDrawItem = null;
     }
   }
-
-  //////////////////////////////////////////draw ///////////////////////////////////////////
 
   onPointerDown(evt: MouseEvent) {
     if (this.currentMode === 'draw') {
       // Start a new freehand stroke
       this.isdrawing = true;
-      this.currentDrawPoints = [this.getMousePos(evt)];
+      this.currentDrawPoints = [this.getMousePos(evt)]; //first point of the stroke
     } else {
       this.startMove(evt); // dragging
     }
   }
 
   onPointerMove(evt: MouseEvent) {
-    if (this.currentMode === 'draw' && this.isdrawing) {
+    if (this.currentMode === 'draw' && this.isdrawing) { 
       const pos = this.getMousePos(evt);
       const points = this.currentDrawPoints;
       const prev = points[points.length - 1];
-      points.push(pos);
+      points.push(pos); 
 
       // Draw the latest segment immediately for updating live
       this.ctx.strokeStyle = this.drawOptions.color;
       this.ctx.lineWidth = this.drawOptions.thickness;
-      this.ctx.beginPath();
-      this.ctx.moveTo(prev.x, prev.y);
-      this.ctx.lineTo(pos.x, pos.y);
-      this.ctx.stroke();
+      this.ctx.beginPath(); // start a new path for drawing
+      this.ctx.moveTo(prev.x, prev.y); // move to the last point
+      this.ctx.lineTo(pos.x, pos.y); // draw a line to the current point
+      this.ctx.stroke(); // render the line on the canvas
     } else {
       this.move(evt); // dragging
     }
   }
 
   onPointerUp() {
-    if (this.currentMode === 'draw' && this.isdrawing) {
+    if (this.currentMode === 'draw' && this.isdrawing) { 
       // add the new layer
-      this.layers[this.currentLayerIndex].items.push({
+      this.layers[this.currentLayerIndex].items.push({   
         subType: 'freehand',
         data: {
           points: [...this.currentDrawPoints],
           color: this.drawOptions.color,
           thickness: this.drawOptions.thickness,
         },
-         order: this.counter++,
         visible: true,
       });
 
@@ -410,10 +426,10 @@ export class AppComponent {
     }
   }
 
-  // every time there is a change in the layers ,we redraw all the layers on the canvas by using ctx.
+  // every time there is a change in the layers ,we redraw all the layers on the canvas.
   redraw() {
     const canvas = this.canvasRef.nativeElement;
-    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height); // clear the canvas
 
     if (this.baseImage) {
       this.ctx.drawImage(this.baseImage, 0, 0, canvas.width, canvas.height);
@@ -422,14 +438,20 @@ export class AppComponent {
     this.layers.forEach((layer, index) => {
       if (!layer.visible) return;
       layer.items.forEach((item) => {
-      if (!item.visible) return; // skip invisible items
-      if (item.subType === 'circle' || item.subType === 'triangle' || item.subType === 'square' || item.subType === 'polygonPoints') {
-        this.drawPolygon(item.data);
-      } else if (item.subType === 'text') {
-        this.drawText(item.data.text, item.data.position, index);
-      } else if (item.subType === 'freehand') {
-        this.drawFreehand(item.data);
-      }})
+        if (!item.visible) return; // skip invisible items
+        if (
+          item.subType === 'circle' ||
+          item.subType === 'triangle' ||
+          item.subType === 'square' ||
+          item.subType === 'polygonPoints'
+        ) {
+          this.drawPolygon(item.data);
+        } else if (item.subType === 'text') {
+          this.drawText(item.data);
+        } else if (item.subType === 'freehand') {
+          this.drawFreehand(item.data);
+        }
+      });
     });
   }
 
@@ -439,32 +461,25 @@ export class AppComponent {
     this.ctx.lineWidth = data.thickness || 1;
     this.ctx.fillStyle = data.fillColor || 'transparent'; // Default: no fill
 
-    if (data.center && data.radius) {
+    if (data.center && data.radius) { // circle
       this.ctx.beginPath();
-      this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI);
+      this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI); 
       this.ctx.fill();
       this.ctx.stroke();
     } else if (data.points && data.points.length > 0) {
       this.ctx.beginPath();
-      this.ctx.moveTo(data.points[0].x, data.points[0].y);
-      data.points.slice(1).forEach((p: Point) => this.ctx.lineTo(p.x, p.y));
-      this.ctx.closePath();
-      this.ctx.fill(); // fill inside
-      this.ctx.stroke(); // draw border
+      this.ctx.moveTo(data.points[0].x, data.points[0].y); // start at the first point
+      data.points.slice(1).forEach((p: Point) => this.ctx.lineTo(p.x, p.y)); // draw lines between points
+      this.ctx.closePath(); // close the path to form a polygon
+      this.ctx.fill(); 
+      this.ctx.stroke(); 
     }
   }
 
-  drawText(text: string, position: { x: number; y: number }, index : number) {
-    const item = this.layers[index].items.find(
-      (item) =>
-        item.data.text === text &&
-        item.data.position.x === position.x &&
-        item.data.position.y === position.y
-    );
-    if (!item) return;
-    this.ctx.font = item.data.font || '16px Arial';
-    this.ctx.fillStyle = item.data.color || '#000000';
-    this.ctx.fillText(text, position.x, position.y);
+  drawText(data: any) {
+    this.ctx.font = data.font || '16px Arial';
+    this.ctx.fillStyle = data.color || '#000000';
+    this.ctx.fillText(data.text, data.position.x, data.position.y);
   }
 
   drawFreehand(data: { points: Point[]; color: string; thickness: number }) {
@@ -474,14 +489,14 @@ export class AppComponent {
     this.ctx.strokeStyle = data.color;
     this.ctx.lineWidth = data.thickness;
     this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
+    this.ctx.moveTo(points[0].x, points[0].y); // start at the first point
     for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
+      this.ctx.lineTo(points[i].x, points[i].y); // draw lines between points
     }
-    this.ctx.stroke();
+    this.ctx.stroke(); // render the freehand stroke on the canvas
   }
 
-  addTextLayer() {
+  addTextItem() {
     const text = prompt('Enter text:');
     if (!text) return;
     const defaultFont = '16px Arial';
@@ -498,13 +513,12 @@ export class AppComponent {
         height,
       },
       subType: 'text',
-       order: this.counter++,
-        visible: true,
+      visible: true,
     });
     this.redraw();
   }
 
-  addSquareLayer() {
+  addSquareItem() {
     const size = 100;
     const startX = 200;
     const startY = 200;
@@ -525,14 +539,13 @@ export class AppComponent {
         fillColor: 'transparent',
         thickness: 1,
       },
-       order: this.counter++,
-        visible: true,
+      visible: true,
     });
     this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
-  addTriangleLayer() {
+  addTriangleItem() {
     const size = 100;
     const startX = 200;
     const startY = 200;
@@ -554,14 +567,13 @@ export class AppComponent {
         fillColor: 'transparent',
         thickness: 1,
       },
-       order: this.counter++,
-        visible: true,
+      visible: true,
     });
     this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
-  addCircleLayer() {
+  addCircleItem() {
     const centerX = 300;
     const centerY = 300;
     const radius = 50;
@@ -574,21 +586,19 @@ export class AppComponent {
         fillColor: 'transparent',
         thickness: 1,
       },
-       order: this.counter++,
-        visible: true,
-
+      visible: true,
     });
     this.isAddShapeDialogOpen = false;
     this.redraw();
   }
 
-  handleItemEdit(layerIndex: number ,index: number) {
+  handleItemEdit(index: number) {
     // updating the edit of polygon text or draw
-    const item = this.layers[this.currentLayerIndex].items[index];
-    if (item.subType === 'text') {
-      this.editingLayerIndex = index;
-      this.polygonEditingLayerIndex = null;
-      this.drawEditingLayerIndex = null;
+    const item = this.layers[this.currentLayerIndex].items[index]; 
+    if (item.subType === 'text') { 
+      this.editingItemIndex = index; // index of the text item that is being edited only
+      this.polygonEditingItemIndex = null;
+      this.drawEditingItemIndex = null;
       const { font = '16px Arial', color = '#000000' } = item.data;
       const sizeMatch = font.match(/(\d+)px/);
       this.editOptions = {
@@ -596,10 +606,15 @@ export class AppComponent {
         fontSize: sizeMatch ? parseInt(sizeMatch[1]) : 16,
         color,
       };
-    } else if (item.subType === 'polygonPoints' || item.subType === 'triangle' || item.subType === 'square' || item.subType === 'circle' ) {
-      this.polygonEditingLayerIndex = index;
-      this.editingLayerIndex = null;
-      this.drawEditingLayerIndex = null;
+    } else if ( 
+      item.subType === 'polygonPoints' ||
+      item.subType === 'triangle' ||
+      item.subType === 'square' ||
+      item.subType === 'circle'
+    ) {
+      this.polygonEditingItemIndex = index; // index of the polygon item that is being edited only
+      this.editingItemIndex = null;
+      this.drawEditingItemIndex = null;
       const {
         color = '#000000',
         fillColor = 'transparent',
@@ -611,10 +626,10 @@ export class AppComponent {
         fillColor,
         thickness,
       };
-    } else if (item.subType ==='freehand') {
-      this.drawEditingLayerIndex = index;
-      this.editingLayerIndex = null;
-      this.polygonEditingLayerIndex = null;
+    } else if (item.subType === 'freehand') {
+      this.drawEditingItemIndex = index; // index of the freehand item that is being edited only  
+      this.editingItemIndex = null;
+      this.polygonEditingItemIndex = null;
       this.drawOptions = {
         color: item.data.color,
         thickness: item.data.thickness,
@@ -624,9 +639,9 @@ export class AppComponent {
     }
   }
 
-  updateLiveEdit() {
-    if (this.editingLayerIndex === null) return;
-    const item = this.layers[this.currentLayerIndex].items[this.editingLayerIndex];
+  updateLiveEdit() { // updating the text item live edit
+    if (this.editingItemIndex === null) return;
+    const item = this.layers[this.currentLayerIndex].items[this.editingItemIndex];
     if (item.subType !== 'text') return;
     const { bold, fontSize, color } = this.editOptions;
     const weight = bold ? 'bold' : 'normal';
@@ -634,19 +649,17 @@ export class AppComponent {
     item.data.font = font;
     item.data.color = color;
     this.ctx.font = font;
-    const metrics = this.ctx.measureText(item.data.text);
+    const metrics = this.ctx.measureText(item.data.text); // measure the text width 
     item.data.width = metrics.width;
     item.data.height = fontSize;
     this.redraw();
   }
 
-  updatePolygonLiveEdit() {
-    if (this.polygonEditingLayerIndex === null) return;
-    const item = this.layers[this.currentLayerIndex].items[this.polygonEditingLayerIndex];
-    if (item.subType === 'text' || item.subType === 'freehand')
-       return;
-
-    // Apply color and thickness
+  updatePolygonLiveEdit() { // updating the polygon item live edit
+    if (this.polygonEditingItemIndex === null) return;
+    const item = this.layers[this.currentLayerIndex].items[this.polygonEditingItemIndex];
+    if (item.subType === 'text' || item.subType === 'freehand') 
+      return;
     item.data.color = this.polygonEditOptions.color;
     item.data.fillColor = this.polygonEditOptions.fillColor;
     item.data.thickness = this.polygonEditOptions.thickness;
@@ -673,24 +686,23 @@ export class AppComponent {
           { x: center.x, y: center.y - size },
         ];
       }
-    } else if (item.data.radius !== undefined) {
+    } else if (item.data.radius !== undefined) { // Circle
       item.data.radius = size;
     }
-
     this.redraw();
   }
 
-  updateDrawLiveEdit() {
-    if (this.drawEditingLayerIndex === null) return;
-    const item = this.layers[this.currentLayerIndex].items[this.drawEditingLayerIndex];
+  updateDrawLiveEdit() { // updating the freehand item live edit
+    if (this.drawEditingItemIndex === null) return;
+    const item = this.layers[this.currentLayerIndex].items[this.drawEditingItemIndex];
     item.data.color = this.drawOptions.color;
     item.data.thickness = this.drawOptions.thickness;
     this.redraw();
   }
 
   saveLayers() {
-    const dataStr = JSON.stringify(this.layers[this.currentLayerIndex]);
-    const blob = new Blob([dataStr], { type: 'application/json' });
+    const dataStr = JSON.stringify(this.layers[this.currentLayerIndex]); // convert the current layer to JSON string
+    const blob = new Blob([dataStr], { type: 'application/json' }); // create a blob from the JSON string so it can be downloaded
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -703,32 +715,32 @@ export class AppComponent {
     this.fileInputRef.nativeElement.click();
   }
 
-  handleFile(event: any) {
-     const file = event.target.files[0];
-  if (!file) return;
+  handleFile(event: any) { // handle the file input change event, namely when a file is selected
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = (e: ProgressEvent<FileReader>) => {
-    try {
-      const text = e.target?.result as string;
-      const parsed = JSON.parse(text);
+    const reader = new FileReader(); // FileReader is used to read the contents of files stored on the user's computer.
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      try {
+        const text = e.target?.result as string;
+        const parsed = JSON.parse(text); // parse the JSON string to an object
 
-      if (Array.isArray(parsed)) {
-        // Replace entire layers list
-        this.layers = parsed;
-      } else {
-        // Single-layer JSON: append it
-        this.layers.push(parsed);
+        if (Array.isArray(parsed)) { 
+          // Replace entire layers list
+          this.layers = parsed;
+        } else {
+          // Single-layer JSON: append it
+          this.layers.push(parsed);
+        }
+
+        // Select the first layer if any
+        this.currentLayerIndex = this.layers.length > this.layers.length - 1 ? 0 : -1;
+        this.redraw();
+      } catch (err) {
+        console.error('Failed to load layers:', err);
       }
-
-      // Select the first layer if any
-      this.currentLayerIndex = this.layers.length > 0 ? 0 : -1;
-      this.redraw();
-    } catch (err) {
-      console.error('Failed to load layers:', err);
-    }
-  };
-  reader.readAsText(file);
+    };
+    reader.readAsText(file);
   }
 
   uploadImage() {
@@ -746,7 +758,7 @@ export class AppComponent {
       };
       img.src = e.target?.result as string;
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file); // read the file as a data URL
   }
 
   clearCanvas() {
@@ -755,8 +767,16 @@ export class AppComponent {
   }
 
   handleLayerDelete(index: number) {
-    this.layers.splice(index, 1);
-    this.currentLayerIndex --;
+    // Remove the layer by building a new array
+    this.layers = this.layers.filter((_, i) => i !== index);
+
+    //  Update the current layer index
+
+    this.currentLayerIndex = Math.min(
+      this.layers.length - 1,
+      Math.max(0, this.currentLayerIndex - 1)
+    ); 
+
     this.redraw();
   }
 
@@ -766,27 +786,25 @@ export class AppComponent {
   }
 
   cancelEdit() {
-    this.editingLayerIndex = null;
+    this.editingItemIndex = null;
   }
 
   cancelPolygonEdit() {
-    this.polygonEditingLayerIndex = null;
+    this.polygonEditingItemIndex = null;
   }
 
   cancelDrawEdit() {
-    this.drawEditingLayerIndex = null;
+    this.drawEditingItemIndex = null;
   }
 
   handleItemDelete(layerIdx: number, itemIdx: number) {
-  this.layers[layerIdx].items.splice(itemIdx,1);
-  this.redraw();
-}
+    this.layers[layerIdx].items.splice(itemIdx, 1);
+    this.redraw();
+  }
 
-handleItemToggle(layerIdx: number, itemIdx: number) {
-  const item = this.layers[layerIdx].items[itemIdx];
-  item.visible = !item.visible;
-  this.redraw();
-}
-
-
+  handleItemToggle(layerIdx: number, itemIdx: number) {
+    const item = this.layers[layerIdx].items[itemIdx];
+    item.visible = !item.visible;
+    this.redraw();
+  }
 }

@@ -11,13 +11,13 @@
 </div>
 
   <div *ngIf="layers.length > 0" class="toolbar">
-    <button *ngIf="layers[currentLayerIndex].type==='text'" (click)="addTextLayer()">Add Text</button>
+    <button *ngIf="layers[currentLayerIndex].type==='text'" (click)="addTextItem()">Add Text</button>
     <div *ngIf="layers[currentLayerIndex].type == 'polygon'">
       <button (click)="openAddPolygonDialog()">Add Polygon</button>
       <button *ngIf="currentMode==='move'" (click)="currentMode='draw'">Draw</button>
       <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">Stop Drawing</button>
     </div>
-    <div *ngIf="currentMode==='move' && editingLayerIndex !== null" class="edit-toolbar">
+    <div *ngIf="currentMode==='move' && editingItemIndex !== null" class="edit-toolbar">
       <label>
         <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
         Bold
@@ -33,8 +33,8 @@
       <button (click)="cancelEdit()">Cancel</button>
     </div>
 
-    <div *ngIf="currentMode==='move' && polygonEditingLayerIndex !== null" class="edit-toolbar">
-      <div *ngIf ="layers[currentLayerIndex].items[polygonEditingLayerIndex]?.subType !== 'polygonPoints'">
+    <div *ngIf="currentMode==='move' && polygonEditingItemIndex !== null" class="edit-toolbar">
+      <div *ngIf ="layers[currentLayerIndex].items[polygonEditingItemIndex]?.subType !== 'polygonPoints'">
       <label>
         Size:
         <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
@@ -55,7 +55,7 @@
       <button (click)="cancelPolygonEdit()">Cancel</button>
     </div>
 
-    <div *ngIf="currentMode === 'draw' && drawEditingLayerIndex === null"
+    <div *ngIf="currentMode === 'draw' && drawEditingItemIndex === null"
         class="edit-toolbar">
       <label>
         Line Color:
@@ -75,7 +75,7 @@
       <button (click)="currentMode='move'">Stop Drawing</button>
     </div>
 
-    <div *ngIf="currentMode === 'move' && drawEditingLayerIndex !== null"
+    <div *ngIf="currentMode === 'move' && drawEditingItemIndex !== null"
         class="edit-toolbar">
       <label>
         Line Color:
@@ -119,7 +119,7 @@
   (onDeleteLayer)="handleLayerDelete($event)"
   (onToggleLayerVis)="handleLayerToggle($event)"
   (onDeleteItem)="handleItemDelete($event.layer,$event.item)"
-  (onEditItem)="handleItemEdit($event.layer,$event.item)"
+  (onEditItem)="handleItemEdit($event.item)"
   (onToggleItemVis)="handleItemToggle($event.layer,$event.item)"
   (layerSelected)="currentLayerIndex = $event"
 
@@ -131,9 +131,9 @@
   <div class="dialog-overlay" *ngIf="isAddShapeDialogOpen">
     <div class="dialog">
       <h3>Select Polygon Shape</h3>
-      <button (click)="addSquareLayer()">Square</button>
-      <button (click)="addTriangleLayer()">Triangle</button>
-      <button (click)="addCircleLayer()">Circle</button>
+      <button (click)="addSquareItem()">Square</button>
+      <button (click)="addTriangleItem()">Triangle</button>
+      <button (click)="addCircleItem()">Circle</button>
       <button (click)="enterPolygonByClickMode()">Draw Polygon by Points</button>
       <button (click)="closeAddPolygonDialog()">Cancel</button>
     </div>
