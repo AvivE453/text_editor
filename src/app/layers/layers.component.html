@@ -21,7 +21,7 @@
       <li *ngFor="let item of layer.items; let j = index"
           class="item-entry"
           [class.selected]="selectedLayerIndex === i && selectedItemIndex === j"
-          (click)="selectItem(i, j); $event.stopPropagation()">
+          >
         {{ item.subType | titlecase }} #{{ j + 1 }}
 
         <!-- item controls -->

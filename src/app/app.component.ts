@@ -83,6 +83,7 @@ export class AppComponent {
     bold: false,
     fontSize: 16,
     color: '#000000',
+    text: ''
   };
 
   polygonEditOptions = {
@@ -605,6 +606,7 @@ export class AppComponent {
         bold: font.includes('bold'),
         fontSize: sizeMatch ? parseInt(sizeMatch[1]) : 16,
         color,
+        text: item.data.text || '', // initialize with existing text or empty string
       };
     } else if ( 
       item.subType === 'polygonPoints' ||
@@ -648,10 +650,12 @@ export class AppComponent {
     const font = `${weight} ${fontSize}px Arial`;
     item.data.font = font;
     item.data.color = color;
+    item.data.text = this.editOptions.text;
     this.ctx.font = font;
     const metrics = this.ctx.measureText(item.data.text); // measure the text width 
     item.data.width = metrics.width;
     item.data.height = fontSize;
+   
     this.redraw();
   }
 

@@ -1,130 +1,192 @@
 <main class="main">
-  
- <div class="layer-picker toolbar">
-  <button (click)="saveLayers()">Save</button>
-  <button (click)="loadLayers()">Load</button>
-  <button (click)="uploadImage()">Upload Image</button>
-      <button (click)="clearCanvas()">Clear Canvas</button>
+  <div class="layer-picker toolbar">
+    <button (click)="saveLayers()">Save</button>
+    <button (click)="loadLayers()">Load</button>
+    <button (click)="uploadImage()">Upload Image</button>
+    <button (click)="clearCanvas()">Clear Canvas</button>
 
     <button (click)="addNewLayer('text')" value="text">Add Text Layer</button>
-    <button (click)="addNewLayer('polygon')" value="polygon">Add Polygon Layer</button>
-</div>
+    <button (click)="addNewLayer('polygon')" value="polygon">
+      Add Polygon Layer
+    </button>
+  </div>
 
   <div *ngIf="layers.length > 0" class="toolbar">
-    <button *ngIf="layers[currentLayerIndex].type==='text'" (click)="addTextItem()">Add Text</button>
+    <button
+      *ngIf="layers[currentLayerIndex].type === 'text'"
+      (click)="addTextItem()"
+    >
+      Add Text
+    </button>
     <div *ngIf="layers[currentLayerIndex].type == 'polygon'">
       <button (click)="openAddPolygonDialog()">Add Polygon</button>
-      <button *ngIf="currentMode==='move'" (click)="currentMode='draw'">Draw</button>
-      <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">Stop Drawing</button>
+      <button *ngIf="currentMode === 'move'" (click)="currentMode = 'draw'">
+        Draw
+      </button>
+      <button *ngIf="currentMode === 'draw'" (click)="currentMode = 'move'">
+        Stop Drawing
+      </button>
     </div>
-    <div *ngIf="currentMode==='move' && editingItemIndex !== null" class="edit-toolbar">
+    <div
+      *ngIf="currentMode === 'move' && editingItemIndex !== null"
+      class="edit-toolbar"
+    >
       <label>
-        <input type="checkbox" [(ngModel)]="editOptions.bold" (change)="updateLiveEdit()">
+        <input
+          type="checkbox"
+          [(ngModel)]="editOptions.bold"
+          (change)="updateLiveEdit()"
+        />
         Bold
       </label>
       <label>
         Size:
-        <input type="number" [(ngModel)]="editOptions.fontSize" min="8" max="72" (input)="updateLiveEdit()">
+        <input
+          type="number"
+          [(ngModel)]="editOptions.fontSize"
+          min="8"
+          max="72"
+          (input)="updateLiveEdit()"
+        />
       </label>
       <label>
         Color:
-        <input type="color" [(ngModel)]="editOptions.color" (input)="updateLiveEdit()">
+        <input
+          type="color"
+          [(ngModel)]="editOptions.color"
+          (input)="updateLiveEdit()"
+        />
       </label>
+      <label>
+        Text:
+        <input
+          type="text"
+          [(ngModel)]="editOptions.text"
+          (ngModelChange)="updateLiveEdit()"
+        />
+      </label>
+
       <button (click)="cancelEdit()">Cancel</button>
     </div>
 
-    <div *ngIf="currentMode==='move' && polygonEditingItemIndex !== null" class="edit-toolbar">
-      <div *ngIf ="layers[currentLayerIndex].items[polygonEditingItemIndex]?.subType !== 'polygonPoints'">
-      <label>
-        Size:
-        <input type="number" min="3" max="100" [(ngModel)]="polygonEditOptions.size" (input)="updatePolygonLiveEdit()">
-      </label>
+    <div
+      *ngIf="currentMode === 'move' && polygonEditingItemIndex !== null"
+      class="edit-toolbar"
+    >
+      <div
+        *ngIf="
+          layers[currentLayerIndex].items[polygonEditingItemIndex]?.subType !==
+          'polygonPoints'
+        "
+      >
+        <label>
+          Size:
+          <input
+            type="number"
+            min="3"
+            max="100"
+            [(ngModel)]="polygonEditOptions.size"
+            (input)="updatePolygonLiveEdit()"
+          />
+        </label>
       </div>
       <label>
         Color:
-        <input type="color" [(ngModel)]="polygonEditOptions.color" (input)="updatePolygonLiveEdit()">
+        <input
+          type="color"
+          [(ngModel)]="polygonEditOptions.color"
+          (input)="updatePolygonLiveEdit()"
+        />
       </label>
       <label>
         Fill:
-        <input type="color" [(ngModel)]="polygonEditOptions.fillColor" (input)="updatePolygonLiveEdit()">
+        <input
+          type="color"
+          [(ngModel)]="polygonEditOptions.fillColor"
+          (input)="updatePolygonLiveEdit()"
+        />
       </label>
       <label>
         Thickness:
-        <input type="number" min="1" max="10" [(ngModel)]="polygonEditOptions.thickness" (input)="updatePolygonLiveEdit()">
+        <input
+          type="number"
+          min="1"
+          max="10"
+          [(ngModel)]="polygonEditOptions.thickness"
+          (input)="updatePolygonLiveEdit()"
+        />
       </label>
       <button (click)="cancelPolygonEdit()">Cancel</button>
     </div>
 
-    <div *ngIf="currentMode === 'draw' && drawEditingItemIndex === null"
-        class="edit-toolbar">
+    <div
+      *ngIf="currentMode === 'draw' && drawEditingItemIndex === null"
+      class="edit-toolbar"
+    >
       <label>
         Line Color:
-        <input
-          type="color"
-          [(ngModel)]="drawOptions.color"
-        >
+        <input type="color" [(ngModel)]="drawOptions.color" />
       </label>
       <label>
         Thickness:
         <input
           type="number"
           [(ngModel)]="drawOptions.thickness"
-          min="1" max="20"
-        >
+          min="1"
+          max="20"
+        />
       </label>
-      <button (click)="currentMode='move'">Stop Drawing</button>
+      <button (click)="currentMode = 'move'">Stop Drawing</button>
     </div>
 
-    <div *ngIf="currentMode === 'move' && drawEditingItemIndex !== null"
-        class="edit-toolbar">
+    <div
+      *ngIf="currentMode === 'move' && drawEditingItemIndex !== null"
+      class="edit-toolbar"
+    >
       <label>
         Line Color:
         <input
           type="color"
           [(ngModel)]="drawOptions.color"
           (input)="updateDrawLiveEdit()"
-        >
+        />
       </label>
       <label>
         Thickness:
         <input
           type="number"
           [(ngModel)]="drawOptions.thickness"
-          min="1" max="20"
+          min="1"
+          max="20"
           (input)="updateDrawLiveEdit()"
-        >
+        />
       </label>
       <button (click)="cancelDrawEdit()">Cancel</button>
     </div>
-
-
   </div>
-
-  
-
-
 
   <div class="container">
     <div class="canvas-wrapper">
       <canvas
-        #canvas width="900" height="800"
+        #canvas
+        width="900"
+        height="800"
         (mousedown)="onPointerDown($event)"
         (mousemove)="onPointerMove($event)"
         (mouseup)="onPointerUp()"
-        (click)="currentMode==='polygonPoints' && onCanvasClick($event)"
-        (dblclick)="onCanvasDblClick($event)">
+        (click)="currentMode === 'polygonPoints' && onCanvasClick($event)"
+        (dblclick)="onCanvasDblClick($event)"
+      >
       </canvas>
-    <app-layers
-  [layers]="layers"
-  (onDeleteLayer)="handleLayerDelete($event)"
-  (onToggleLayerVis)="handleLayerToggle($event)"
-  (onDeleteItem)="handleItemDelete($event.layer,$event.item)"
-  (onEditItem)="handleItemEdit($event.item)"
-  (onToggleItemVis)="handleItemToggle($event.layer,$event.item)"
-  (layerSelected)="currentLayerIndex = $event"
-
-></app-layers>
-
+      <app-layers
+        [layers]="layers"
+        (onDeleteLayer)="handleLayerDelete($event)"
+        (onToggleLayerVis)="handleLayerToggle($event)"
+        (onDeleteItem)="handleItemDelete($event.layer, $event.item)"
+        (onEditItem)="handleItemEdit($event.item)"
+        (onToggleItemVis)="handleItemToggle($event.layer, $event.item)"
+        (layerSelected)="currentLayerIndex = $event"
+      ></app-layers>
     </div>
   </div>
 
@@ -134,12 +196,25 @@
       <button (click)="addSquareItem()">Square</button>
       <button (click)="addTriangleItem()">Triangle</button>
       <button (click)="addCircleItem()">Circle</button>
-      <button (click)="enterPolygonByClickMode()">Draw Polygon by Points</button>
+      <button (click)="enterPolygonByClickMode()">
+        Draw Polygon by Points
+      </button>
       <button (click)="closeAddPolygonDialog()">Cancel</button>
     </div>
   </div>
 
-  <input type="file" #imageInput accept="image/*" style="display: none" (change)="handleImage($event)">
+  <input
+    type="file"
+    #imageInput
+    accept="image/*"
+    style="display: none"
+    (change)="handleImage($event)"
+  />
 </main>
 
-<input type="file" style="display: none" #fileInput (change)="handleFile($event)">
+<input
+  type="file"
+  style="display: none"
+  #fileInput
+  (change)="handleFile($event)"
+/>

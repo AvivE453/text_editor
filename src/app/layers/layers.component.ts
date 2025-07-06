@@ -31,11 +31,6 @@ export class LayersComponent {
     this.layerSelected.emit(i); //Update the selected layer index which allows editing and deleting items
   }
 
-  selectItem(layerIdx: number, itemIdx: number) {
-    this.selectedLayerIndex = layerIdx;
-    this.selectedItemIndex  = itemIdx;
-  }
-
   deleteLayer(i: number) {
     this.onDeleteLayer.emit(i);
   }
