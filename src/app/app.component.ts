@@ -77,6 +77,8 @@ export class AppComponent {
 
   dragStartMouse: Point = { x: 0, y: 0 }; //starting mouse position when dragging in freehand mode
   dragStartPoints: Point[] = []; // starting points of the freehand stroke when draggingS
+  selectdDraggingVertex : number = -1; // the vertex that is being dragged in polygon editing mode
+  isDraggingVertex = false; // flag to indicate if a vertex is being dragged
 
   editOptions = {
     //text editing options
@@ -378,6 +380,27 @@ export class AppComponent {
   }
 
   onPointerDown(evt: MouseEvent) {
+  const pos = this.getMousePos(evt);
+
+  //Editing a polygon by clicking on its vertices
+  if (this.polygonEditingItemIndex !== null) {
+    const layer = this.layers[this.currentLayerIndex];
+    const item  = layer.items[this.polygonEditingItemIndex];
+    // Check if we clicked on a vertex of the polygon
+    if (item.subType === 'polygonPoints') {
+      for (let i = 0; i < item.data.points.length; i++) {
+        const p = item.data.points[i];
+        const d = Math.hypot(pos.x - p.x, pos.y - p.y);
+        if (d <= 5) {
+          this.selectdDraggingVertex = i;
+          this.isDraggingVertex   = true;
+          return;    
+        }
+      }
+    }
+  }
+
+
     if (this.currentMode === 'draw') {
       // Start a new freehand stroke
       this.isdrawing = true;
@@ -388,6 +411,26 @@ export class AppComponent {
   }
 
   onPointerMove(evt: MouseEvent) {
+      const pos = this.getMousePos(evt);
+
+      if (this.isDraggingVertex && this.polygonEditingItemIndex !== null) {
+    const polyItem = this.layers[this.currentLayerIndex]
+                          .items[this.polygonEditingItemIndex];
+    // Update the specific vertex
+    polyItem.data.points[this.selectdDraggingVertex] = pos;
+
+    // Recalculate center so whole-polygon moves still work:
+    const pts = polyItem.data.points;
+    polyItem.data.center = {
+      x: pts.reduce((sum: number, p: Point) => sum + p.x, 0) / pts.length,
+      y: pts.reduce((sum: number, p: Point) => sum + p.y, 0) / pts.length,
+    };
+
+    this.redraw();
+    return;  
+  }
+
+
     if (this.currentMode === 'draw' && this.isdrawing) { 
       const pos = this.getMousePos(evt);
       const points = this.currentDrawPoints;
@@ -407,6 +450,12 @@ export class AppComponent {
   }
 
   onPointerUp() {
+    if (this.isDraggingVertex) {
+         this.isDraggingVertex   = false;
+         this.selectdDraggingVertex = -1;
+    return;       //keep on editing the polygon
+  }
+
     if (this.currentMode === 'draw' && this.isdrawing) { 
       // add the new layer
       this.layers[this.currentLayerIndex].items.push({   
@@ -438,7 +487,7 @@ export class AppComponent {
 
     this.layers.forEach((layer, index) => {
       if (!layer.visible) return;
-      layer.items.forEach((item) => {
+      layer.items.forEach((item, itemIndex) => {
         if (!item.visible) return; // skip invisible items
         if (
           item.subType === 'circle' ||
@@ -447,6 +496,17 @@ export class AppComponent {
           item.subType === 'polygonPoints'
         ) {
           this.drawPolygon(item.data);
+          if (index === this.currentLayerIndex
+  && itemIndex === this.polygonEditingItemIndex && item.subType === 'polygonPoints') {
+            item.data.points.forEach( (p : any) => {
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#000';
+            this.ctx.stroke();
+  });
+          }
         } else if (item.subType === 'text') {
           this.drawText(item.data);
         } else if (item.subType === 'freehand') {
@@ -456,12 +516,54 @@ export class AppComponent {
     });
   }
 
+/**
+ * Right-click on a vertex to delete it when in polygon-edit mode.
+ */
+onCanvasContextMenu(evt: MouseEvent) {
+  evt.preventDefault();    // don’t show the browser menu
+  const pos = this.getMousePos(evt);
+
+  //Check if we are in polygon editing mode
+  if (this.polygonEditingItemIndex === null) return;
+
+  const layer = this.layers[this.currentLayerIndex];
+  const item  = layer.items[this.polygonEditingItemIndex];
+
+  if (item.subType !== 'polygonPoints') return;
+
+
+  for (let i = 0; i < item.data.points.length; i++) {
+    const p = item.data.points[i];
+    if (Math.hypot(pos.x - p.x, pos.y - p.y) <= 5) {
+      //Remove that one point
+      item.data.points.splice(i, 1);
+
+      //Recalc the polygon’s center so your drag-whole-shape still works
+      const pts = item.data.points;
+      item.data.center = {
+        x: pts.reduce((sum: number, p: Point) => sum + p.x, 0) / pts.length,
+        y: pts.reduce((sum: number, p: Point) => sum + p.y, 0) / pts.length,
+      };
+
+      //If fewer than 3 points remain, cancel edit mode
+      if (item.data.points.length < 3) {
+        this.polygonEditingItemIndex = null;
+      }
+
+      this.redraw();
+      return;
+    }
+  }
+}
+
+
+
   drawPolygon(data: any) {
     // we rendereing the whole canvas so each time we create a new polygon or edditing we have different setting for it
     this.ctx.strokeStyle = data.color || '#000000';
     this.ctx.lineWidth = data.thickness || 1;
     this.ctx.fillStyle = data.fillColor || 'transparent'; // Default: no fill
-
+    
     if (data.center && data.radius) { // circle
       this.ctx.beginPath();
       this.ctx.arc(data.center.x, data.center.y, data.radius, 0, 2 * Math.PI); 
@@ -474,6 +576,7 @@ export class AppComponent {
       this.ctx.closePath(); // close the path to form a polygon
       this.ctx.fill(); 
       this.ctx.stroke(); 
+      
     }
   }
 
@@ -628,6 +731,8 @@ export class AppComponent {
         fillColor,
         thickness,
       };
+      if(item.subType === 'polygonPoints')
+        this.redraw();
     } else if (item.subType === 'freehand') {
       this.drawEditingItemIndex = index; // index of the freehand item that is being edited only  
       this.editingItemIndex = null;
@@ -795,6 +900,7 @@ export class AppComponent {
 
   cancelPolygonEdit() {
     this.polygonEditingItemIndex = null;
+    this.redraw();
   }
 
   cancelDrawEdit() {

@@ -73,6 +73,7 @@
       *ngIf="currentMode === 'move' && polygonEditingItemIndex !== null"
       class="edit-toolbar"
     >
+  
       <div
         *ngIf="
           layers[currentLayerIndex].items[polygonEditingItemIndex]?.subType !==
@@ -164,6 +165,17 @@
       <button (click)="cancelDrawEdit()">Cancel</button>
     </div>
   </div>
+  <div
+  *ngIf="
+    polygonEditingItemIndex !== null &&
+    layers[currentLayerIndex].items[polygonEditingItemIndex]?.subType ===
+      'polygonPoints'
+  "
+  class="delete-instruction"
+>
+  <strong>Right click on the point to delete</strong>
+</div>
+
 
   <div class="container">
     <div class="canvas-wrapper">
@@ -176,6 +188,8 @@
         (mouseup)="onPointerUp()"
         (click)="currentMode === 'polygonPoints' && onCanvasClick($event)"
         (dblclick)="onCanvasDblClick($event)"
+        (contextmenu)="onCanvasContextMenu($event)"
+
       >
       </canvas>
       <app-layers
